@@ -17,8 +17,8 @@ function TODO(label: string): never {
 // Section 1 — Ed25519
 //   1a. Generate Ed25519 keypair               → publicKey, privateKey
 //   1b. Sign `message` with Ed25519            → signature
-//   1c. Verify signature against `message`     → honestValid    (expect true)
-//   1d. Verify signature against `tampered`    → tamperedValid  (expect false)
+//   1c. Verify signature against `message`     → honestValid
+//   1d. Verify signature against `tampered`    → tamperedValid
 // ============================================================
 
 export function signAndVerifyWithEd25519(
@@ -49,7 +49,7 @@ export function signAndVerifyWithEd25519(
 // Section 2 — ECDSA P-256
 //   2a. Generate ECDSA P-256 keypair   → publicKey, privateKey
 //   2b. Sign `message` with ECDSA      → signature
-//   2c. Verify signature               → valid          (expect true)
+//   2c. Verify signature               → valid
 // ============================================================
 
 export function signAndVerifyWithEcdsaP256(message: Buffer): {
@@ -75,7 +75,7 @@ export function signAndVerifyWithEcdsaP256(message: Buffer): {
 //   3a. Compute SHA-256 hex digest of `message` (for display)     → digestHex
 //   3b. Compute SHA-256 digest of `message` as Buffer (same hash) → digestBytes
 //   3c. Sign `message` with ECDSA P-256 + SHA-256                 → signature
-//   3d. Verify signature                                          → signatureValid (expect true)
+//   3d. Verify signature                                          → signatureValid
 //
 //   Note: Node's `sign('sha256', message, key)` internally hashes the
 //   message with SHA-256 and then signs the 32-byte digest with ECDSA.
