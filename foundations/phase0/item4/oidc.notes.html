@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>04 — OpenID Connect</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --client: #1e6fff;
+        --server: #c8332b;
+        --idtoken: #6f3eb8;
+        --accesstoken: #2e8b57;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+        --added: #e0f1e5;
+        --added-border: #2e8b57;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.55 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 6px 0;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+
+    .page-nav {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+
+    .bg-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin: 4px 0 14px;
+        flex-wrap: wrap;
+    }
+    .bg-tab-button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        color: var(--muted);
+        position: relative;
+        top: 1px;
+    }
+    .bg-tab-button.active {
+        color: var(--ink);
+        border-color: var(--border);
+        border-bottom-color: var(--panel);
+        background: var(--panel);
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+    }
+    .bg-tab-content { display: none; }
+    .bg-tab-content.active { display: block; }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .concept-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .concept-card h4 { margin: 0 0 4px; }
+    .concept-card .tagline {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+    .concept-card .body { font-size: 12px; line-height: 1.5; }
+    .concept-card.danger { border-left: 3px solid var(--danger); background: #fbe9e7; }
+    .concept-card.warn { border-left: 3px solid var(--warn); background: #fff9e6; }
+    .concept-card.added { border-left: 3px solid var(--added-border); background: var(--added); }
+
+    table.claims-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 13px;
+    }
+    .claims-table th, .claims-table td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .claims-table th { background: var(--code-bg); font-weight: 600; }
+    .claims-table .required { background: #fff9e6; }
+    .claims-table code { font-size: 11px; }
+
+    /* URL diff visualization */
+    .url-diff {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 14px 0;
+    }
+    @media (max-width: 760px) {
+        .url-diff { grid-template-columns: 1fr; }
+    }
+    .url-panel {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px 14px;
+        background: white;
+    }
+    .url-panel h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
+    .url-panel .url-line {
+        font: 11px/1.6 ui-monospace, monospace;
+        word-break: break-all;
+        padding: 8px;
+        background: var(--code-bg);
+        border-radius: 4px;
+    }
+    .url-panel .param-list {
+        font: 11px/1.7 ui-monospace, monospace;
+        margin: 8px 0 0;
+    }
+    .url-panel .param-list .param { display: block; }
+    .url-panel .param-list .added {
+        background: var(--added);
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-weight: 600;
+        border-left: 3px solid var(--added-border);
+        margin-left: -4px;
+        padding-left: 4px;
+    }
+    .url-panel .param-list .changed {
+        background: var(--highlight);
+        padding: 1px 4px;
+        border-radius: 3px;
+    }
+
+    /* Interactive verifier */
+    .verify-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 14px 0;
+    }
+    @media (max-width: 760px) {
+        .verify-grid { grid-template-columns: 1fr; }
+    }
+    .verify-col h4 {
+        font-size: 12px;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+        margin: 0 0 8px;
+    }
+    .verify-col textarea {
+        width: 100%;
+        font: 11px/1.5 ui-monospace, monospace;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: white;
+        min-height: 160px;
+        resize: vertical;
+    }
+    .verify-buttons {
+        display: flex;
+        gap: 8px;
+        margin: 12px 0;
+        flex-wrap: wrap;
+    }
+    .verify-buttons button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--ink);
+        color: white;
+        border: 1px solid var(--ink);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .verify-buttons button.secondary {
+        background: var(--panel);
+        color: var(--ink);
+    }
+    .verify-buttons button.preset {
+        background: var(--code-bg);
+        color: var(--muted);
+        border: 1px solid var(--border);
+        font-size: 12px;
+    }
+
+    .check-list {
+        margin: 10px 0;
+        padding: 0;
+        list-style: none;
+    }
+    .check-list li {
+        padding: 6px 10px;
+        margin: 4px 0;
+        border-radius: 4px;
+        font: 12px/1.5 ui-monospace, monospace;
+        background: var(--code-bg);
+        border-left: 3px solid var(--border);
+    }
+    .check-list li.pass {
+        background: var(--added);
+        border-left-color: var(--success);
+        color: var(--success);
+    }
+    .check-list li.fail {
+        background: #fbe9e7;
+        border-left-color: var(--danger);
+        color: var(--danger);
+    }
+    .check-list li.skip {
+        color: var(--muted);
+        font-style: italic;
+    }
+    .check-list .check-label {
+        display: inline-block;
+        width: 14ch;
+        font-family: -apple-system, sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .verdict {
+        padding: 10px 14px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .verdict.ok {
+        background: var(--added);
+        border-left: 3px solid var(--success);
+        color: var(--success);
+    }
+    .verdict.fail {
+        background: #fbe9e7;
+        border-left: 3px solid var(--danger);
+        color: var(--danger);
+    }
+
+    /* Quiz */
+    .quiz-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .quiz-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .quiz-card .question { font-weight: 600; margin: 0 0 10px; font-size: 13px; }
+    .reveal-btn {
+        padding: 5px 12px;
+        font: 11px/1 -apple-system, sans-serif;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .reveal-btn:hover { background: var(--code-bg); color: var(--ink); }
+    .quiz-card .answer {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff4d0;
+        border-left: 3px solid var(--warn);
+        border-radius: 0 4px 4px 0;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .quiz-card .answer.hidden { display: none; }
+
+    /* References */
+    .ref-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .ref-card {
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        text-decoration: none;
+        color: var(--ink);
+        transition: transform 100ms;
+    }
+    .ref-card:hover { transform: translateY(-2px); border-color: var(--client); }
+    .ref-card strong { display: block; color: var(--client); font-size: 13px; }
+    .ref-card .ref-title { font-size: 13px; margin: 2px 0; font-weight: 500; }
+    .ref-card small { color: var(--muted); font-size: 11px; display: block; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+    <h1>04 — OpenID Connect</h1>
+    <p>OAuth gives you a token. OIDC adds an identity layer: ask for the <code>openid</code> scope and you also get an <strong>ID Token</strong> — a signed JWT that tells the relying party who logged in.</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#background">Background</a>
+    <a href="#url-diff">OAuth → OIDC: the URL diff</a>
+    <a href="#verifier">ID Token verifier</a>
+    <a href="#references">Self-check &amp; refs</a>
+</nav>
+
+<!-- ─── Background ─────────────────────────────────────────────── -->
+<section class="panel" id="background">
+    <h2>Background — read first</h2>
+
+    <div class="bg-tabs">
+        <button class="bg-tab-button active" data-bg="layer">What OIDC adds</button>
+        <button class="bg-tab-button" data-bg="claims">ID Token claims</button>
+        <button class="bg-tab-button" data-bg="nonce-state">nonce vs state</button>
+        <button class="bg-tab-button" data-bg="discovery">Discovery (preview)</button>
+    </div>
+
+    <!-- Tab: layer -->
+    <div class="bg-tab-content active" id="bg-layer">
+        <h3>OIDC = OAuth + one new token + one new scope</h3>
+        <p>OAuth 2.0 lets a client get an <strong>access token</strong> — a credential that says "the bearer is allowed to do X." That's authorization. It says nothing about <em>who</em> the user is.</p>
+        <p>OpenID Connect bolts identity onto OAuth by adding:</p>
+
+        <div class="card-grid">
+            <div class="concept-card added">
+                <h4>The <code>openid</code> scope</h4>
+                <div class="tagline">The opt-in switch</div>
+                <div class="body">A single literal token added to the <code>scope</code> parameter of the authorization request. Without it, the OP runs plain OAuth. With it, the OP also mints an ID Token.</div>
+            </div>
+            <div class="concept-card added">
+                <h4>The ID Token</h4>
+                <div class="tagline">New deliverable</div>
+                <div class="body">A signed JWT (you already built one in Item 02). Its payload is a standard claim set: <code>iss</code>, <code>sub</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, optionally <code>nonce</code>. Returned <em>alongside</em> the access token.</div>
+            </div>
+            <div class="concept-card added">
+                <h4>The <code>nonce</code> parameter</h4>
+                <div class="tagline">Replay protection</div>
+                <div class="body">A random value the RP sends in the auth request. The OP embeds it in the ID Token's <code>nonce</code> claim. The RP checks it matches on receipt.</div>
+            </div>
+            <div class="concept-card">
+                <h4>(Optional) Discovery</h4>
+                <div class="tagline">.well-known/openid-configuration</div>
+                <div class="body">A JSON document at a well-known URL that tells RPs where the OP's endpoints live, which signing keys are in use, which scopes are supported, etc. Lets RPs auto-configure.</div>
+            </div>
+        </div>
+
+        <h3>Roles (different names, same OAuth actors)</h3>
+        <table class="claims-table">
+            <thead>
+                <tr><th>OAuth name</th><th>OIDC name</th><th>What it does</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Authorization Server</td><td><strong>OP</strong> (OpenID Provider)</td><td>Authenticates the user and issues tokens.</td></tr>
+                <tr><td>Client</td><td><strong>RP</strong> (Relying Party)</td><td>The app that wants to know who the user is.</td></tr>
+                <tr><td>Resource Owner</td><td><strong>End-User</strong></td><td>The human logging in.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tab: claims -->
+    <div class="bg-tab-content" id="bg-claims">
+        <h3>The ID Token claim set</h3>
+        <p>An ID Token is just a JWS (which you can already build) whose payload follows OIDC's claim discipline. Five claims are mandatory.</p>
+
+        <table class="claims-table">
+            <thead>
+                <tr><th>Claim</th><th>Required?</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr class="required">
+                    <td><code>iss</code></td>
+                    <td>Required</td>
+                    <td>Issuer Identifier — URL of the OP, e.g. <code>https://accounts.google.com</code>. The RP checks this matches the OP it sent the user to.</td>
+                </tr>
+                <tr class="required">
+                    <td><code>sub</code></td>
+                    <td>Required</td>
+                    <td>Subject — stable identifier for this user <em>at this issuer</em>. Not an email; not human-readable in general. Same user across logins → same <code>sub</code>.</td>
+                </tr>
+                <tr class="required">
+                    <td><code>aud</code></td>
+                    <td>Required</td>
+                    <td>Audience — the <code>client_id</code> of the RP this token was issued for. Can be a string OR an array of strings; the RP must check its own <code>client_id</code> is in there.</td>
+                </tr>
+                <tr class="required">
+                    <td><code>exp</code></td>
+                    <td>Required</td>
+                    <td>Expiry — Unix seconds. The RP rejects the token if <code>exp ≤ now</code>. (Item 02 Lesson: <strong>seconds</strong>, not milliseconds.)</td>
+                </tr>
+                <tr class="required">
+                    <td><code>iat</code></td>
+                    <td>Required</td>
+                    <td>Issued At — Unix seconds. Useful for staleness checks ("don't accept tokens minted more than an hour ago even if exp is in the future").</td>
+                </tr>
+                <tr>
+                    <td><code>nonce</code></td>
+                    <td>Required when sent</td>
+                    <td>If the RP put a <code>nonce</code> on the auth request, the OP MUST copy it here. RP checks <code>payload.nonce === expectedNonce</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>auth_time</code></td>
+                    <td>Optional</td>
+                    <td>When the user actually authenticated (vs when the token was issued). Lets RPs enforce "must have logged in within the last N seconds."</td>
+                </tr>
+                <tr>
+                    <td><code>acr</code>, <code>amr</code></td>
+                    <td>Optional</td>
+                    <td>Authentication Context Class Reference / Methods Reference — how strong the authentication was (password? hardware key? MFA?).</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="concept-card warn" style="margin-top:14px">
+            <h4>What does "verifying an ID Token" actually mean?</h4>
+            <div class="body">
+                Two stages, both required:
+                <ol style="margin:6px 0 0; padding-left:18px">
+                    <li><strong>Cryptographic check</strong> — the JWS signature verifies under the OP's public key, and <code>header.alg</code> is what the RP expects (e.g. <code>ES256</code>). This is exactly Item 02's <code>verifyJwsCompact</code>.</li>
+                    <li><strong>Claim discipline</strong> — <code>iss</code> matches, <code>aud</code> contains your <code>client_id</code>, <code>exp &gt; now</code>, <code>nonce</code> matches what you sent, <code>sub</code> is present.</li>
+                </ol>
+                A passing signature doesn't mean a trustworthy token. A token signed by the right key but issued for a different RP is still <em>not yours</em>.
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: nonce-state -->
+    <div class="bg-tab-content" id="bg-nonce-state">
+        <h3>Two opaque random values, two different jobs</h3>
+        <p>Both are client-generated, both sent in the authorization request, both opaque. They live in different places at the end of the round trip and defend different attacks.</p>
+
+        <table class="claims-table">
+            <thead>
+                <tr><th></th><th><code>state</code></th><th><code>nonce</code></th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Sent in</strong></td>
+                    <td>/authorize query param</td>
+                    <td>/authorize query param</td>
+                </tr>
+                <tr>
+                    <td><strong>Comes back in</strong></td>
+                    <td>The redirect URL (as <code>?state=…</code>)</td>
+                    <td>The ID Token's <code>nonce</code> claim (inside the signed payload)</td>
+                </tr>
+                <tr>
+                    <td><strong>Compared against</strong></td>
+                    <td>What the RP stored for this browser session</td>
+                    <td>What the RP stored for this auth request</td>
+                </tr>
+                <tr>
+                    <td><strong>Defends against</strong></td>
+                    <td><strong>CSRF</strong> — attacker forges a callback URL pointing at your RP with their own code</td>
+                    <td><strong>ID Token replay</strong> — attacker captures a valid token and replays it into a new RP session</td>
+                </tr>
+                <tr>
+                    <td><strong>Lives only on the wire?</strong></td>
+                    <td>Yes — never inside the token</td>
+                    <td>No — embedded inside the signed token payload</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="concept-card warn" style="margin-top:14px">
+            <h4>Mnemonic</h4>
+            <div class="body"><strong>state</strong> defends the redirect; <strong>nonce</strong> defends the token. State is wire-only — an attacker who couldn't see your session can't guess it. Nonce is token-bound — an attacker who captured a real token from one session can't reuse it in a new session whose nonce is different.</div>
+        </div>
+    </div>
+
+    <!-- Tab: discovery -->
+    <div class="bg-tab-content" id="bg-discovery">
+        <h3>Discovery — preview only (not implemented in this lab)</h3>
+        <p>Every OIDC provider publishes a JSON document at a fixed URL:</p>
+        <pre>https://&lt;issuer&gt;/.well-known/openid-configuration</pre>
+
+        <p>That document tells RPs everything they need to auto-configure: endpoint URLs, supported algorithms, and where to fetch signing keys.</p>
+
+        <pre>{
+  "issuer": "https://accounts.example.com",
+  "authorization_endpoint": "https://accounts.example.com/oauth/authorize",
+  "token_endpoint": "https://accounts.example.com/oauth/token",
+  "userinfo_endpoint": "https://accounts.example.com/userinfo",
+  "jwks_uri": "https://accounts.example.com/.well-known/jwks.json",
+  "response_types_supported": ["code"],
+  "id_token_signing_alg_values_supported": ["ES256", "RS256"],
+  "scopes_supported": ["openid", "email", "profile"]
+}</pre>
+
+        <div class="card-grid" style="margin-top:14px">
+            <div class="concept-card">
+                <h4><code>issuer</code></h4>
+                <div class="body">The OP's identifier. Must equal the <code>iss</code> claim in the ID Token. Verification rule: never trust an ID Token whose <code>iss</code> doesn't match the discovery doc you fetched.</div>
+            </div>
+            <div class="concept-card">
+                <h4><code>jwks_uri</code></h4>
+                <div class="body">Where the OP publishes its public signing keys (as a JWK Set — see Item 02). The RP fetches this, picks the right key by <code>kid</code>, and verifies the ID Token signature with it.</div>
+            </div>
+            <div class="concept-card">
+                <h4><code>authorization_endpoint</code></h4>
+                <div class="body">Where to send the user to log in. Same as OAuth — this is the URL your <code>buildOidcAuthorizationUrl</code> targets.</div>
+            </div>
+            <div class="concept-card">
+                <h4><code>userinfo_endpoint</code></h4>
+                <div class="body">An optional endpoint the RP can call with the access token to fetch extra profile claims (email, name, picture) that didn't fit in the ID Token.</div>
+            </div>
+        </div>
+
+        <p style="margin-top:14px"><em>This lab doesn't implement discovery — it's mentioned so you recognize <code>.well-known/openid-configuration</code> when you meet it. In real RPs, fetching and caching the discovery doc is the first step of any new integration.</em></p>
+    </div>
+</section>
+
+<!-- ─── URL diff ───────────────────────────────────────────────── -->
+<section class="panel" id="url-diff">
+    <h2>OAuth → OIDC: the URL diff</h2>
+    <p>Side-by-side: the same authorization request, written as plain OAuth (Item 03) and as OIDC. The diff is small.</p>
+
+    <div class="url-diff">
+        <div class="url-panel">
+            <h4>OAuth 2.0 — Item 03</h4>
+            <div class="url-line">https://issuer.example.com/oauth/authorize?response_type=code&client_id=wallet-app-42&redirect_uri=https%3A%2F%2Fwallet.example.com%2Fcallback&scope=email+profile&state=xyz-csrf-abc&code_challenge=…&amp;code_challenge_method=S256</div>
+            <div class="param-list">
+                <span class="param">response_type=code</span>
+                <span class="param">client_id=wallet-app-42</span>
+                <span class="param">redirect_uri=https://wallet.example.com/callback</span>
+                <span class="param">scope=email profile</span>
+                <span class="param">state=xyz-csrf-abc</span>
+                <span class="param">code_challenge=…</span>
+                <span class="param">code_challenge_method=S256</span>
+            </div>
+        </div>
+
+        <div class="url-panel">
+            <h4>OIDC — Item 04</h4>
+            <div class="url-line">https://issuer.example.com/oauth/authorize?response_type=code&client_id=wallet-app-42&redirect_uri=https%3A%2F%2Fwallet.example.com%2Fcallback&scope=<mark>openid</mark>+email+profile&state=xyz-csrf-abc&code_challenge=…&amp;code_challenge_method=S256&amp;<mark>nonce=n-0S6_WzA2Mj</mark></div>
+            <div class="param-list">
+                <span class="param">response_type=code</span>
+                <span class="param">client_id=wallet-app-42</span>
+                <span class="param">redirect_uri=https://wallet.example.com/callback</span>
+                <span class="param changed">scope=<strong>openid</strong> email profile</span>
+                <span class="param">state=xyz-csrf-abc</span>
+                <span class="param">code_challenge=…</span>
+                <span class="param">code_challenge_method=S256</span>
+                <span class="param added">nonce=n-0S6_WzA2Mj</span>
+            </div>
+        </div>
+    </div>
+
+    <p style="margin-top:6px"><strong>Two changes total:</strong> <code>openid</code> added to <code>scope</code>, and a new <code>nonce</code> parameter. Everything else is unchanged from Item 03.</p>
+
+    <p style="color:var(--muted); font-size:12px"><em>What you get back is different though.</em> Without <code>openid</code>: just an access token. With <code>openid</code>: an access token AND an ID Token whose <code>nonce</code> claim equals the value you sent here.</p>
+</section>
+
+<!-- ─── Interactive verifier ───────────────────────────────────── -->
+<section class="panel" id="verifier">
+    <h2>🔬 ID Token verifier — interactive</h2>
+    <p>Edit the claims and the RP's expectations side by side. The verifier runs the full check sequence and shows which checks pass, which fail, and the first failure reason — the same logic <code>verifyIdToken</code> should implement.</p>
+
+    <div class="verify-buttons">
+        <button class="preset" data-preset="honest">Preset: honest token</button>
+        <button class="preset" data-preset="wrong-iss">Preset: wrong issuer</button>
+        <button class="preset" data-preset="wrong-aud">Preset: wrong audience</button>
+        <button class="preset" data-preset="expired">Preset: expired</button>
+        <button class="preset" data-preset="nonce-replay">Preset: nonce replay</button>
+        <button class="preset" data-preset="no-sub">Preset: missing sub</button>
+    </div>
+
+    <div class="verify-grid">
+        <div class="verify-col">
+            <h4>ID Token claims (the payload)</h4>
+            <textarea id="claims-input"></textarea>
+        </div>
+        <div class="verify-col">
+            <h4>RP expectations</h4>
+            <textarea id="expectations-input"></textarea>
+        </div>
+    </div>
+
+    <div class="verify-buttons">
+        <button id="run-verify-btn">Run verification</button>
+    </div>
+
+    <div id="verify-output"></div>
+</section>
+
+<!-- ─── Self-check + references ─────────────────────────────────── -->
+<section class="panel" id="references">
+    <h2>Self-check &amp; further reading</h2>
+
+    <h3>Self-check</h3>
+    <p style="color:var(--muted); font-size:12px; margin-top:0">Try to answer before clicking "Show answer".</p>
+    <div class="quiz-grid">
+        <div class="quiz-card">
+            <p class="question">An RP sends an authorization request to an OP with <code>scope=email profile</code> (no <code>openid</code>). The user logs in. What does the RP get back?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Just an OAuth access token. No ID Token. The OP runs a plain OAuth flow because <code>openid</code> isn't in scope — the request was never an OIDC request. The user is authenticated to the OP, but the OP doesn't return identity claims to the RP. (Whether the access token can be used to call <code>/userinfo</code> depends on the OP's policy, but no ID Token is minted.)
+            </div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">An attacker captures a valid ID Token from session A and replays it into a new RP session B. Which check stops them, and why does it work?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                The <strong>nonce</strong> check. Session A's RP sent <code>nonce_A</code>; the OP baked <code>nonce_A</code> into the signed token. Session B's RP sends a fresh <code>nonce_B</code> and expects to see <code>nonce_B</code> in the token. The captured token's nonce is <code>nonce_A ≠ nonce_B</code>. The attacker can't change it because the nonce is inside the signed payload — modifying it would break the signature.
+            </div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">An ID Token has a perfectly valid signature under the OP's public key, but its <code>aud</code> is <code>"some-other-client"</code>. Should you trust it?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                <strong>No.</strong> The signature being valid only means the OP minted it — it does NOT mean the OP minted it <em>for you</em>. The <code>aud</code> claim is the OP saying "this token is for client X." If your <code>client_id</code> isn't in <code>aud</code>, the token belongs to a different RP. Accepting it would let any other RP that uses the same OP impersonate users to your service.
+            </div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">Why is the ID Token a JWT (i.e. a JWS), but the access token usually treated as opaque even when it <em>happens</em> to be a JWT?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Different audiences. The ID Token is FOR THE CLIENT — the RP needs to read it to learn who the user is, so it has to be a structured, verifiable format (JWT/JWS). The access token is FOR A RESOURCE SERVER — the client just forwards it; only the resource server reads and verifies it. If a client introspects an access token as if it were for them, they'll accept tokens issued for other audiences and treat the user as logged in when they aren't.
+            </div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">Why does <code>nonce</code> have to be inside the signed payload, but <code>state</code> can live on the redirect URL?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Because they defend different things. <code>state</code> just needs to round-trip through the user's browser to prove the callback came from the session that started the flow — an attacker forging a callback can't guess it. It doesn't need to be unforgeable by the OP, because the OP isn't the attacker here. <br><br><code>nonce</code> needs to be cryptographically bound to the <em>token itself</em>. Otherwise an attacker who captured a valid token could replay it into a new session — there'd be no way for the RP to tell "this token was for session A, not the session I'm currently in" unless the binding survives <em>inside</em> the signed payload.
+            </div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">In the OIDC discovery document, what's the relationship between <code>issuer</code> and the <code>iss</code> claim of an ID Token?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                They must be identical. The RP fetches discovery from <code>https://&lt;issuer&gt;/.well-known/openid-configuration</code> and gets back a JSON object whose <code>issuer</code> field is the OP's canonical identifier. Every ID Token that OP mints must have <code>iss</code> equal to that string. If they don't match — say, you fetched discovery from one URL but got a token claiming a different issuer — somebody is lying. This is the chain that ties "the OP I think I'm talking to" to "the key I'll verify signatures with" to "the claims I'll trust."
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-top:24px">Further reading</h3>
+    <div class="ref-grid">
+        <a href="https://openid.net/specs/openid-connect-core-1_0.html" target="_blank" rel="noopener" class="ref-card">
+            <strong>OIDC Core 1.0</strong>
+            <div class="ref-title">The main OIDC spec</div>
+            <small>~80 pages. §2 (ID Token), §3.1 (Authorization Code Flow), §15.4 (security considerations) are the load-bearing sections.</small>
+        </a>
+        <a href="https://openid.net/specs/openid-connect-discovery-1_0.html" target="_blank" rel="noopener" class="ref-card">
+            <strong>OIDC Discovery 1.0</strong>
+            <div class="ref-title">The .well-known/openid-configuration spec</div>
+            <small>Short. Lists every field a discovery doc can carry.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc7519#section-4.1" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 7519 §4.1</strong>
+            <div class="ref-title">JWT registered claims</div>
+            <small>The base claim set (iss/sub/aud/exp/iat/nbf/jti) that OIDC builds on.</small>
+        </a>
+        <a href="https://openid.net/specs/openid-connect-core-1_0.html#IDToken" target="_blank" rel="noopener" class="ref-card">
+            <strong>OIDC Core §2</strong>
+            <div class="ref-title">ID Token claims, in detail</div>
+            <small>The canonical answer to "what's required, what's optional, what does each claim mean."</small>
+        </a>
+        <a href="https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation" target="_blank" rel="noopener" class="ref-card">
+            <strong>OIDC Core §3.1.3.7</strong>
+            <div class="ref-title">ID Token validation</div>
+            <small>The step-by-step check sequence an RP must run. Compare against your <code>verifyIdToken</code>.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc9700" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 9700</strong>
+            <div class="ref-title">OAuth 2.0 Security BCP</div>
+            <small>Modern OAuth/OIDC security guidance. Worth reading once for the threat model.</small>
+        </a>
+    </div>
+</section>
+
+</div>
+
+<script>
+// ─── Background tabs ───────────────────────────────────────────
+
+document.querySelectorAll('.bg-tab-button').forEach(b => {
+    b.onclick = () => {
+        const name = b.dataset.bg;
+        document.querySelectorAll('.bg-tab-button').forEach(x =>
+            x.classList.toggle('active', x.dataset.bg === name));
+        document.querySelectorAll('.bg-tab-content').forEach(c =>
+            c.classList.toggle('active', c.id === 'bg-' + name));
+    };
+});
+
+// ─── Quiz reveal ───────────────────────────────────────────────
+
+document.querySelectorAll('.reveal-btn').forEach(b => {
+    b.onclick = () => {
+        const card = b.closest('.quiz-card');
+        const answer = card.querySelector('.answer');
+        answer.classList.toggle('hidden');
+        b.textContent = answer.classList.contains('hidden') ? 'Show answer' : 'Hide answer';
+    };
+});
+
+// ─── Interactive verifier ──────────────────────────────────────
+
+const NOW = 1758000000;
+const ISSUER = 'https://issuer.example.com';
+const CLIENT_ID = 'wallet-app-42';
+const NONCE = 'n-0S6_WzA2Mj';
+
+const PRESETS = {
+    'honest': {
+        claims: {
+            iss: ISSUER, sub: 'user-12345', aud: CLIENT_ID,
+            exp: NOW + 3600, iat: NOW, nonce: NONCE,
+        },
+        expectations: { issuer: ISSUER, audience: CLIENT_ID, nonce: NONCE, now: NOW },
+    },
+    'wrong-iss': {
+        claims: {
+            iss: 'https://attacker.example.com', sub: 'user-12345', aud: CLIENT_ID,
+            exp: NOW + 3600, iat: NOW, nonce: NONCE,
+        },
+        expectations: { issuer: ISSUER, audience: CLIENT_ID, nonce: NONCE, now: NOW },
+    },
+    'wrong-aud': {
+        claims: {
+            iss: ISSUER, sub: 'user-12345', aud: 'some-other-client',
+            exp: NOW + 3600, iat: NOW, nonce: NONCE,
+        },
+        expectations: { issuer: ISSUER, audience: CLIENT_ID, nonce: NONCE, now: NOW },
+    },
+    'expired': {
+        claims: {
+            iss: ISSUER, sub: 'user-12345', aud: CLIENT_ID,
+            exp: NOW - 10, iat: NOW - 3700, nonce: NONCE,
+        },
+        expectations: { issuer: ISSUER, audience: CLIENT_ID, nonce: NONCE, now: NOW },
+    },
+    'nonce-replay': {
+        claims: {
+            iss: ISSUER, sub: 'user-12345', aud: CLIENT_ID,
+            exp: NOW + 3600, iat: NOW, nonce: 'nonce_from_old_session',
+        },
+        expectations: { issuer: ISSUER, audience: CLIENT_ID, nonce: 'nonce_for_this_session', now: NOW },
+    },
+    'no-sub': {
+        claims: {
+            iss: ISSUER, aud: CLIENT_ID,
+            exp: NOW + 3600, iat: NOW, nonce: NONCE,
+        },
+        expectations: { issuer: ISSUER, audience: CLIENT_ID, nonce: NONCE, now: NOW },
+    },
+};
+
+function loadPreset(name) {
+    const p = PRESETS[name];
+    document.getElementById('claims-input').value = JSON.stringify(p.claims, null, 2);
+    document.getElementById('expectations-input').value = JSON.stringify(p.expectations, null, 2);
+    document.getElementById('verify-output').innerHTML = '';
+}
+
+document.querySelectorAll('button.preset').forEach(b => {
+    b.onclick = () => loadPreset(b.dataset.preset);
+});
+
+loadPreset('honest');
+
+function runChecks(claims, expectations) {
+    // Run the same sequence verifyIdToken should run.
+    // Signature is faked (we assume "ok" — this UI is about claim discipline).
+    const results = [];
+
+    // 1. signature (simulated)
+    results.push({ name: 'signature', status: 'pass', detail: '(simulated: assume signature verifies)' });
+
+    // 2. iss
+    if (claims.iss !== expectations.issuer) {
+        results.push({ name: 'iss', status: 'fail',
+            detail: `payload.iss = "${claims.iss}", expected "${expectations.issuer}"` });
+        return results;
+    }
+    results.push({ name: 'iss', status: 'pass', detail: `"${claims.iss}"` });
+
+    // 3. aud
+    const audList = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    if (!audList.includes(expectations.audience)) {
+        results.push({ name: 'aud', status: 'fail',
+            detail: `payload.aud = ${JSON.stringify(claims.aud)}, expected to contain "${expectations.audience}"` });
+        return results;
+    }
+    results.push({ name: 'aud', status: 'pass', detail: `${JSON.stringify(claims.aud)} ∋ "${expectations.audience}"` });
+
+    // 4. exp
+    if (typeof claims.exp !== 'number' || claims.exp <= expectations.now) {
+        results.push({ name: 'exp', status: 'fail',
+            detail: `payload.exp = ${claims.exp}, now = ${expectations.now} (token expired or missing)` });
+        return results;
+    }
+    results.push({ name: 'exp', status: 'pass', detail: `expires in ${claims.exp - expectations.now}s` });
+
+    // 5. nonce
+    if (expectations.nonce !== undefined) {
+        if (claims.nonce !== expectations.nonce) {
+            results.push({ name: 'nonce', status: 'fail',
+                detail: `payload.nonce = "${claims.nonce}", expected "${expectations.nonce}"` });
+            return results;
+        }
+        results.push({ name: 'nonce', status: 'pass', detail: `"${claims.nonce}"` });
+    } else {
+        results.push({ name: 'nonce', status: 'skip', detail: 'expectations.nonce absent — check skipped' });
+    }
+
+    // 6. sub
+    if (!claims.sub || typeof claims.sub !== 'string') {
+        results.push({ name: 'sub', status: 'fail',
+            detail: `payload.sub = ${JSON.stringify(claims.sub)} (missing or empty)` });
+        return results;
+    }
+    results.push({ name: 'sub', status: 'pass', detail: `"${claims.sub}"` });
+
+    return results;
+}
+
+document.getElementById('run-verify-btn').onclick = () => {
+    let claims, expectations;
+    try {
+        claims = JSON.parse(document.getElementById('claims-input').value);
+        expectations = JSON.parse(document.getElementById('expectations-input').value);
+    } catch (e) {
+        document.getElementById('verify-output').innerHTML =
+            `<div class="verdict fail">❌ JSON parse error: ${e.message}</div>`;
+        return;
+    }
+
+    const results = runChecks(claims, expectations);
+    const firstFail = results.find(r => r.status === 'fail');
+
+    let html = '<ul class="check-list">';
+    for (const r of results) {
+        const icon = r.status === 'pass' ? '✓' : r.status === 'fail' ? '✗' : '—';
+        html += `<li class="${r.status}"><span class="check-label">${icon} ${r.name}</span>${r.detail}</li>`;
+    }
+    html += '</ul>';
+
+    if (firstFail) {
+        html += `<div class="verdict fail">Verdict: INVALID — first failing check: <code>${firstFail.name}</code></div>`;
+    } else {
+        html += `<div class="verdict ok">Verdict: VALID — all checks passed</div>`;
+    }
+
+    document.getElementById('verify-output').innerHTML = html;
+};
+
+</script>
+</body>
+</html>
