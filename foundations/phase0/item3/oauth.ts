@@ -1,10 +1,12 @@
 /**
  * 03 — OAuth 2.0 Core (Authorization Code + PKCE)
  *
- * READ FIRST  ./oauth.notes.md
+ * READ FIRST  ./oauth.notes.html  (interactive walkthrough + concepts)
  * IMPLEMENT   One function per section. Fill in each body.
  * VERIFY      npm test
  */
+
+import {getRandomValues, hash} from 'node:crypto';
 
 function TODO(label: string): never {
     throw new Error(`TODO — ${label} not implemented`);
@@ -13,61 +15,56 @@ function TODO(label: string): never {
 // ============================================================
 // Section 1 — Generate a PKCE code_verifier
 //
-//   Produce a cryptographically random, URL-unreserved string suitable as
-//   a PKCE `code_verifier` (RFC 7636 §4.1).
-//
-//   1a. verifier length is between 43 and 128 characters (inclusive)
-//   1b. verifier uses only PKCE-unreserved characters: [A-Za-z0-9\-._~]
-//   1c. each call returns a fresh value (driven by cryptographic randomness,
-//       not a counter or fixed seed)
+//   Produce a cryptographically random `code_verifier` per RFC 7636 §4.1:
+//   a string of 43–128 characters drawn from the URL-unreserved set
+//   [A-Za-z0-9\-._~], regenerated freshly on each call.
 // ============================================================
 
 export function generatePkceCodeVerifier(): string {
-    TODO('generatePkceCodeVerifier');
+    const rawBytes = getRandomValues(new Uint8Array(32));
+    return Buffer.from(rawBytes).toString('base64url');
 }
 
 // ============================================================
 // Section 2 — Derive the S256 code_challenge
 //
-//   Compute the PKCE `code_challenge` for the S256 method (RFC 7636 §4.2):
-//      challenge = base64url(SHA-256(ASCII(verifier)))
+//   Deterministic transform of a verifier into its corresponding
+//   `code_challenge` for the S256 method (RFC 7636 §4.2):
+//       challenge = base64url(SHA-256(ASCII(verifier)))
+//   The output is a 43-character string in the base64url alphabet.
 //
 //   Inputs:
-//     verifier — the code_verifier string from Section 1 (the function
-//                does not validate its shape; that's the caller's job)
-//
-//   2a. challenge length is exactly 43 characters
-//       (SHA-256 → 32 bytes → 43 base64url chars, no padding)
-//   2b. challenge uses only base64url characters: [A-Za-z0-9_-]
-//   2c. deterministic — the same verifier always yields the same challenge
+//     verifier — the code_verifier string (the function does not validate
+//                its shape; that's the caller's job)
 // ============================================================
 
 export function deriveCodeChallenge(verifier: string): string {
-    TODO('deriveCodeChallenge');
+    return hash('sha256', verifier, 'base64url');
 }
 
 // ============================================================
 // Section 3 — Build an OAuth 2.0 authorization request URL
 //
 //   Construct the URL the client redirects the user to in step 2 of the
-//   Authorization Code Flow with PKCE.
+//   Authorization Code Flow with PKCE. The output preserves the
+//   `authEndpoint`'s origin and pathname and appends a query string
+//   carrying the OAuth parameters.
+//
+//   Only the parameter *keys* are transformed: camelCase input keys map
+//   to snake_case on the wire (clientId → client_id, redirectUri →
+//   redirect_uri, codeChallenge → code_challenge, and so on). The
+//   parameter *values* travel verbatim — no transformation applied to
+//   what the caller passed in.
+//
+//   Two parameters are not in `params` because their values are fixed
+//   by the protocol: `response_type=code` and `code_challenge_method=S256`.
+//   The function always emits these.
 //
 //   Inputs:
 //     authEndpoint — absolute URL of the auth server's /authorize endpoint
 //                    (e.g. "https://issuer.example.com/oauth/authorize")
-//     params       — camelCase inputs; the function maps each to the
-//                    corresponding snake_case query parameter on the wire
-//
-//   3a. result preserves the authEndpoint's origin and pathname
-//   3b. response_type=code is always set
-//   3c. code_challenge_method=S256 is always set
-//   3d. every camelCase input becomes a snake_case query parameter with
-//       the same value:
-//         clientId      → client_id
-//         redirectUri   → redirect_uri
-//         scope         → scope
-//         state         → state
-//         codeChallenge → code_challenge
+//     params       — values keyed by camelCase; the keys (not the values)
+//                    are converted to snake_case on the wire
 // ============================================================
 
 export function buildAuthorizationUrl(
@@ -80,7 +77,16 @@ export function buildAuthorizationUrl(
         codeChallenge: string;
     },
 ): string {
-    TODO('buildAuthorizationUrl');
+    const queryParams = new URLSearchParams({
+        response_type: 'code',
+        client_id: params.clientId,
+        redirect_uri: params.redirectUri,
+        scope: params.scope,
+        state: params.state,
+        code_challenge: params.codeChallenge,
+        code_challenge_method: 'S256',
+    });
+    return `${authEndpoint}?${queryParams}`;
 }
 
 // ============================================================

@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OAuth 2.0 + PKCE — Interactive Walkthrough</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --client: #1e6fff;
+        --user: #6b6b6b;
+        --server: #c8332b;
+        --secret: #b8860b;
+        --front-channel: #d4a017;
+        --back-channel: #2e8b57;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono {
+        font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 8px 0;
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
+    header { margin-bottom: 24px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+
+    .layout-top {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .layout-top > * { min-width: 0; }  /* lets URL ellipsis kick in instead of inflating column */
+    @media (max-width: 980px) {
+        .layout-top { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 16px 18px;
+    }
+
+    /* Stepper */
+    .stepper {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .stepper button {
+        flex: 1;
+        min-width: 70px;
+        padding: 6px 4px;
+        font: 11px/1.2 -apple-system, sans-serif;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .stepper button.active {
+        background: var(--ink);
+        color: white;
+        border-color: var(--ink);
+    }
+    .stepper button.done {
+        background: var(--panel);
+        color: var(--ink);
+        border-color: var(--ink);
+    }
+
+    /* Controls */
+    .controls {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0;
+    }
+    .controls button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--ink);
+        color: white;
+        border: 1px solid var(--ink);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .controls button:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+    .controls button.secondary {
+        background: var(--panel);
+        color: var(--ink);
+    }
+
+    /* Step body */
+    .step-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        flex-wrap: wrap;
+    }
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 11px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .badge.client       { background: #e7f0ff; color: var(--client); }
+    .badge.user         { background: #ededeb; color: var(--user); }
+    .badge.server       { background: #fbe9e7; color: var(--server); }
+    .badge.front        { background: #fff4d0; color: #8a6500; }
+    .badge.back         { background: #e0f1e5; color: var(--back-channel); }
+    .badge.none         { background: #ededeb; color: var(--muted); }
+    .arrow { font-size: 14px; color: var(--muted); }
+
+    .step-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+    .step-narration { margin-bottom: 12px; }
+    .step-narration .highlight {
+        background: var(--highlight);
+        padding: 0 3px;
+    }
+    .step-narration ul { padding-left: 18px; margin: 6px 0; }
+    .step-narration li { margin: 2px 0; }
+
+    .server-actions {
+        background: #fbe9e7;
+        border-left: 3px solid var(--server);
+        padding: 10px 12px;
+        margin: 10px 0;
+        border-radius: 0 4px 4px 0;
+    }
+    .server-actions ol { margin: 4px 0 0 18px; padding: 0; }
+    .server-actions li { margin: 3px 0; }
+
+    /* ─── Browser mock (UI panel) ─────────────────────────────── */
+    .ui-panel h2 .sub {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: normal;
+        margin-left: 6px;
+    }
+    .browser-mock {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 0 var(--border);
+        margin-bottom: 12px;
+        transition: opacity 200ms;
+    }
+    .browser-mock.transit {
+        opacity: 0.5;
+        background: repeating-linear-gradient(45deg, #fafaf7, #fafaf7 8px, #f0eee5 8px, #f0eee5 16px);
+    }
+    .browser-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #ededeb;
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--border);
+        font: 11px/1 ui-monospace, monospace;
+    }
+    .browser-dots { display: flex; gap: 5px; }
+    .browser-dots span {
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: #d8d6cf;
+    }
+    .browser-actor {
+        font-size: 10px;
+        padding: 2px 8px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        color: var(--muted);
+    }
+    .browser-actor.client { color: var(--client); border-color: #b4cdff; }
+    .browser-actor.server { color: var(--server); border-color: #f5c2bf; }
+    .browser-actor.transit { color: var(--muted); }
+    .browser-url {
+        flex: 1;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        padding: 4px 10px;
+        font-size: 10px;
+        color: var(--ink);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .browser-lock { color: var(--success); font-size: 11px; }
+    .browser-content {
+        padding: 20px 18px;
+        min-height: 200px;
+        font-size: 13px;
+    }
+
+    .mock-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        margin: 8px 0;
+        background: #fafaf7;
+    }
+    .mock-button {
+        display: inline-block;
+        padding: 8px 18px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--client);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: default;
+        margin: 6px 4px 0 0;
+    }
+    .mock-button.muted { background: var(--bg); color: var(--ink); border: 1px solid var(--border); }
+    .mock-button.danger { background: var(--bg); color: var(--danger); border: 1px solid var(--border); }
+    .mock-input {
+        display: block;
+        width: 100%;
+        padding: 6px 10px;
+        font: 13px/1.2 -apple-system, sans-serif;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: white;
+        margin: 4px 0 8px;
+    }
+    .mock-label { font-size: 11px; color: var(--muted); margin: 8px 0 2px; }
+    .mock-status { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .mock-status .ok { color: var(--success); font-weight: 600; }
+    .mock-spinner {
+        display: inline-block;
+        width: 12px; height: 12px;
+        border: 2px solid var(--border);
+        border-top-color: var(--ink);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+        margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ui-note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff4d0;
+        border-left: 3px solid var(--front-channel);
+        border-radius: 0 4px 4px 0;
+        font-size: 12px;
+        color: #6b5300;
+    }
+    .ui-note.back {
+        background: #e0f1e5;
+        border-left-color: var(--back-channel);
+        color: #1f5a3a;
+    }
+    .ui-note.none {
+        background: #ededeb;
+        border-left-color: var(--muted);
+        color: var(--muted);
+    }
+
+    /* ─── Bottom tabs (state + playground) ────────────────────── */
+    .tab-buttons {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin: -16px -18px 14px;
+        padding: 12px 14px 0;
+    }
+    .tab-button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: transparent;
+        border: 1px solid transparent;
+        border-bottom: 1px solid transparent;
+        cursor: pointer;
+        color: var(--muted);
+        position: relative;
+        top: 1px;
+    }
+    .tab-button.active {
+        color: var(--ink);
+        border-color: var(--border);
+        border-bottom-color: var(--panel);
+        background: var(--panel);
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Secrets */
+    .secret-row {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+    }
+    .secret-row:last-child { border-bottom: 0; }
+    .secret-row .name {
+        font-weight: 500;
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+    }
+    .secret-row .value {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        word-break: break-all;
+    }
+    .secret-row.empty .value { color: var(--muted); font-style: italic; }
+    .secret-row.exposed .name::after {
+        content: " 👁";
+        color: var(--front-channel);
+    }
+    .secret-row.locked .name::after {
+        content: " 🔒";
+        color: var(--secret);
+    }
+    .secret-row.used .name { text-decoration: line-through; opacity: 0.5; }
+
+    .state-cols {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 24px;
+    }
+    @media (max-width: 880px) {
+        .state-cols { grid-template-columns: 1fr; }
+    }
+    .channel-line {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px;
+        font-size: 12px;
+        margin: 4px 0;
+        align-items: center;
+    }
+
+    /* Playground */
+    .playground input {
+        width: 100%;
+        padding: 8px 10px;
+        font: 12px/1.4 ui-monospace, monospace;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin: 4px 0 8px;
+    }
+    .playground .result {
+        background: var(--code-bg);
+        padding: 8px 10px;
+        border-radius: 4px;
+        font: 12px/1.4 ui-monospace, monospace;
+        word-break: break-all;
+        margin: 4px 0;
+    }
+    .playground .row {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 10px;
+        align-items: center;
+        margin: 6px 0;
+        font-size: 12px;
+    }
+    .playground .row span:first-child { color: var(--muted); }
+
+    /* Attack section */
+    .attack-result {
+        padding: 10px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        margin: 8px 0;
+    }
+    .attack-result.fail {
+        background: #fbe9e7;
+        border-left: 3px solid var(--danger);
+        color: var(--danger);
+    }
+    .attack-result.success {
+        background: #e0f1e5;
+        border-left: 3px solid var(--success);
+        color: var(--success);
+    }
+    .attack-section pre { font-size: 11px; }
+    .attack-section button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 4px 4px 4px 0;
+    }
+    .attack-section button.legit { background: var(--success); }
+
+    /* ─── Top page nav ──────────────────────────────────────── */
+    .page-nav {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+
+    /* ─── Background section: tabs ──────────────────────────── */
+    .bg-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin: 4px 0 14px;
+    }
+    .bg-tab-button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        color: var(--muted);
+        position: relative;
+        top: 1px;
+    }
+    .bg-tab-button.active {
+        color: var(--ink);
+        border-color: var(--border);
+        border-bottom-color: var(--panel);
+        background: var(--panel);
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+    }
+    .bg-tab-content { display: none; }
+    .bg-tab-content.active { display: block; }
+
+    /* ─── Role grid ─────────────────────────────────────────── */
+    .role-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+    .role-card {
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+        transition: transform 100ms;
+    }
+    .role-card:hover { transform: translateY(-2px); }
+    .role-card h4 { margin: 0 0 6px; color: var(--ink); }
+    .role-card .example {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 10px;
+    }
+    .role-card .didvc-map {
+        font-size: 12px;
+        padding: 6px 10px;
+        background: var(--code-bg);
+        border-radius: 4px;
+        margin-top: 8px;
+    }
+    .role-card .didvc-map strong { color: var(--server); }
+
+    /* ─── PKCE explainer flow ──────────────────────────────── */
+    .pkce-flow {
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+    .pkce-card {
+        flex: 1;
+        min-width: 180px;
+        padding: 14px 16px;
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        background: white;
+    }
+    .pkce-card.secret {
+        border-color: var(--secret);
+        background: #fff9e6;
+    }
+    .pkce-card.public {
+        border-color: var(--front-channel);
+        background: #fff4d0;
+    }
+    .pkce-card .pkce-label {
+        font-weight: 600;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    .pkce-card .pkce-desc {
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .pkce-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        color: var(--muted);
+        text-align: center;
+        min-width: 130px;
+    }
+    .pkce-arrow-label {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--ink);
+        margin-bottom: 2px;
+    }
+    .pkce-arrow-symbol {
+        font-size: 24px;
+        color: var(--ink);
+        line-height: 1;
+    }
+
+    /* ─── Token grid ────────────────────────────────────────── */
+    .token-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+    .token-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .token-card h4 { margin: 0 0 4px; }
+    .token-card .lifetime {
+        display: inline-block;
+        padding: 2px 8px;
+        background: var(--code-bg);
+        border-radius: 9px;
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+    .token-card .purpose { font-size: 12px; margin: 4px 0; }
+    .token-card .where { font-size: 12px; color: var(--muted); margin: 4px 0; }
+
+    /* ─── Quiz cards ────────────────────────────────────────── */
+    .quiz-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .quiz-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .quiz-card .question {
+        font-weight: 600;
+        margin: 0 0 10px;
+        font-size: 13px;
+    }
+    .reveal-btn {
+        padding: 5px 12px;
+        font: 11px/1 -apple-system, sans-serif;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .reveal-btn:hover { background: var(--code-bg); color: var(--ink); }
+    .quiz-card .answer {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff4d0;
+        border-left: 3px solid var(--front-channel);
+        border-radius: 0 4px 4px 0;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .quiz-card .answer.hidden { display: none; }
+
+    /* ─── Reference cards ──────────────────────────────────── */
+    .ref-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .ref-card {
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        text-decoration: none;
+        color: var(--ink);
+        transition: transform 100ms;
+    }
+    .ref-card:hover { transform: translateY(-2px); border-color: var(--client); }
+    .ref-card strong { display: block; color: var(--client); font-size: 13px; }
+    .ref-card .ref-title { font-size: 13px; margin: 2px 0; font-weight: 500; }
+    .ref-card small {
+        color: var(--muted);
+        font-size: 11px;
+        display: block;
+        margin-top: 4px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<header>
+    <h1>OAuth 2.0 Authorization Code Flow + PKCE</h1>
+    <p>Step through the full flow. The left panel narrates what's happening on the wire; the right panel shows what the user actually sees in their browser. Use the tabs below to inspect every secret in real time or experiment with the PKCE transform.</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#background">Background</a>
+    <a href="#walkthrough">Flow</a>
+    <a href="#bottom-panel">State &amp; playground</a>
+    <a href="#attack">Attack sim</a>
+    <a href="#references">Self-check &amp; refs</a>
+</nav>
+
+<!-- ─── Background section: read first ──────────────────────────── -->
+<section class="panel" id="background">
+    <h2>Background — read first</h2>
+    <p>Three things to know before the walkthrough: what PKCE is, who's who, and what each token means.</p>
+
+    <div class="bg-tabs">
+        <button class="bg-tab-button active" data-bg="pkce">PKCE</button>
+        <button class="bg-tab-button" data-bg="roles">The four roles</button>
+        <button class="bg-tab-button" data-bg="tokens">Token types</button>
+    </div>
+
+    <!-- Tab: PKCE -->
+    <div class="bg-tab-content active" id="bg-pkce">
+        <p><strong>PKCE</strong> (pronounced "pixy") = <strong>Proof Key for Code Exchange</strong> — <a href="https://datatracker.ietf.org/doc/html/rfc7636" target="_blank" rel="noopener">RFC 7636</a>. A small extension to OAuth 2.0 that solves one specific problem: <em>authorization-code interception</em>. An attacker who steals the <code>code</code> from the browser layer (malicious mobile app, deep-link hijack, browser history exfil) cannot redeem it without a matching secret the client held back — the <code>code_verifier</code>.</p>
+
+        <p style="font-size:12px; color:var(--muted); margin-top:8px"><strong>Why isn't TLS alone enough?</strong> TLS encrypts the network link between client and AS. But the <code>code</code> arrives via a browser redirect URL — it's processed by the user-agent (browser address bar, browser history, OS deep-link routing, Referer headers from the callback page). None of that is "in transit" to the AS; it's all post-decryption, on the user's device. TLS doesn't reach there. PKCE adds a second secret that travels only on the back-channel TLS link, never through the user-agent layer.</p>
+
+        <h4 style="margin-top:14px">The three values you'll see</h4>
+        <div class="pkce-flow">
+            <div class="pkce-card secret">
+                <div class="pkce-label">🔒 code_verifier</div>
+                <div class="pkce-desc">Random 43–128 char string from <code>[A-Za-z0-9\-._~]</code>. <strong>Secret.</strong> Stays in client memory.</div>
+            </div>
+            <div class="pkce-arrow">
+                <div class="pkce-arrow-label">base64url(SHA-256(…))</div>
+                <div class="pkce-arrow-symbol">→</div>
+                <small style="font-size:10px">one-way<br>can't be inverted</small>
+            </div>
+            <div class="pkce-card public">
+                <div class="pkce-label">👁 code_challenge</div>
+                <div class="pkce-desc">Always 43 chars. <strong>Public.</strong> Sent in the step-1 authorization URL.</div>
+            </div>
+        </div>
+        <p style="margin-top:10px; font-size:12px; color:var(--muted)">A third parameter, <code>code_challenge_method</code>, tells the AS which transform produced the challenge. <strong>Use <code>S256</code>.</strong> The spec also defines <code>plain</code> (challenge = verifier, no hashing) — but that defeats PKCE entirely and is forbidden by every modern profile (OAuth 2.1, OpenID4VC, FAPI).</p>
+
+        <h4 style="margin-top:14px">How the AS uses them</h4>
+        <p style="font-size:13px">In step 1 (front-channel) the AS stores the <code>code_challenge</code> alongside the session. In step 5 (back-channel) the client sends the <code>code_verifier</code>. The AS computes <code>SHA-256(submitted_verifier)</code> and compares to the stored challenge. Match → mint tokens. Mismatch → reject.</p>
+
+        <p style="margin-top:12px; color:var(--muted); font-size:12px">The "Try the attack" section at the bottom of this page lets you watch the rejection happen byte-by-byte. The PKCE playground tab in the live-state panel lets you experiment with the SHA-256 transform yourself.</p>
+    </div>
+
+    <!-- Tab: Roles -->
+    <div class="bg-tab-content" id="bg-roles">
+        <p>OAuth defines four actors. Every spec downstream (OIDC, OpenID4VC) uses these labels — memorize them.</p>
+        <div class="role-grid">
+            <div class="role-card">
+                <h4>Resource Owner</h4>
+                <div class="example">The user (you)</div>
+                <div class="didvc-map">DID/VC: <strong>credential subject</strong></div>
+            </div>
+            <div class="role-card">
+                <h4>Client</h4>
+                <div class="example">The app requesting access (wallet, mobile app, SPA)</div>
+                <div class="didvc-map">DID/VC: <strong>wallet</strong></div>
+            </div>
+            <div class="role-card">
+                <h4>Authorization Server</h4>
+                <div class="example">Issues tokens. Hosts <code>/authorize</code> and <code>/token</code>. Examples: Google, Auth0, your in-house AS</div>
+                <div class="didvc-map">DID/VC: <strong>credential issuer's auth endpoint</strong></div>
+            </div>
+            <div class="role-card">
+                <h4>Resource Server</h4>
+                <div class="example">Hosts protected resources. Validates Bearer tokens. Example: Google Drive API</div>
+                <div class="didvc-map">DID/VC: <strong>credential endpoint</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Token types -->
+    <div class="bg-tab-content" id="bg-tokens">
+        <p>OAuth uses several token types with very different lifetimes and purposes. Don't conflate them.</p>
+        <div class="token-grid">
+            <div class="token-card">
+                <h4>Authorization code</h4>
+                <div class="lifetime">~60 seconds, single-use</div>
+                <div class="purpose">Opaque random string the AS mints in step 3, after the user authenticates and consents. Defined by <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1" target="_blank" rel="noopener">RFC 6749 §1.3.1</a>; the response format is in <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2" target="_blank" rel="noopener">§4.1.2</a>.</div>
+                <div class="where">Sent: front-channel URL (step 4 callback)</div>
+                <div class="purpose" style="margin-top:8px"><strong>Format:</strong> implementation-defined. The spec just says "opaque to the client, single-use, short-lived." Common in practice: 16–32 cryptographically random bytes, base64url-encoded. Could also be a UUID, an internal session key, an HMAC-signed token — as long as the AS can map it back to the session it stored in step 1.</div>
+                <div class="purpose" style="margin-top:8px"><strong>Why a code (not a token) is returned here:</strong> the access/refresh tokens are long-lived and powerful. If they came back in the step-4 redirect URL, they'd hit browser history, server logs, Referer headers — same exposure problem PKCE addresses for the code. By issuing a short-lived single-use code first, the AS keeps the actual tokens off the front-channel entirely; they're issued only on the back-channel response in step 6.</div>
+            </div>
+            <div class="token-card">
+                <h4>Access token</h4>
+                <div class="lifetime">Minutes–hours</div>
+                <div class="purpose">The actual permission. Carried as <code>Authorization: Bearer &lt;token&gt;</code> to the resource server.</div>
+                <div class="where">Sent: back-channel /token response</div>
+            </div>
+            <div class="token-card">
+                <h4>Refresh token</h4>
+                <div class="lifetime">Days–months</div>
+                <div class="purpose">Long-lived re-grant material. Trade it at /token for a fresh access token without user reauth.</div>
+                <div class="where">Sent: back-channel only</div>
+            </div>
+            <div class="token-card">
+                <h4>ID token (OIDC only)</h4>
+                <div class="lifetime">Minutes</div>
+                <div class="purpose">A <strong>JWT</strong> (Item 02!) carrying identity claims. Only appears when scope includes <code>openid</code>.</div>
+                <div class="where">Issued alongside access token</div>
+            </div>
+        </div>
+        <p style="margin-top:14px; color:var(--muted); font-size:12px">In OpenID4VC, the access token buys you a <strong>verifiable credential</strong> at the credential endpoint — same flow shape, different payload at the end.</p>
+    </div>
+
+</section>
+
+<div class="layout-top">
+    <!-- LEFT: flow walkthrough -->
+    <div class="panel" id="walkthrough">
+        <div class="stepper" id="stepper"></div>
+        <div class="controls">
+            <button id="prev" class="secondary">← Prev</button>
+            <button id="next">Next →</button>
+            <button id="reset" class="secondary">Reset</button>
+        </div>
+
+        <div class="step-meta">
+            <span class="badge" id="actor-badge"></span>
+            <span class="arrow">→</span>
+            <span class="badge" id="recipient-badge"></span>
+            <span style="margin-left:auto"></span>
+            <span class="badge" id="channel-badge"></span>
+        </div>
+
+        <div class="step-title" id="step-title"></div>
+        <div class="step-narration" id="step-narration"></div>
+        <div id="step-http"></div>
+        <div id="step-server"></div>
+    </div>
+
+    <!-- RIGHT: UI mock -->
+    <div class="panel ui-panel">
+        <h2>What the user sees <span class="sub">— browser view</span></h2>
+        <div class="browser-mock" id="browser-mock">
+            <div class="browser-bar">
+                <div class="browser-dots"><span></span><span></span><span></span></div>
+                <span class="browser-actor" id="mock-actor">—</span>
+                <span class="browser-url" id="mock-url">about:blank</span>
+            </div>
+            <div class="browser-content" id="mock-content">
+                <p style="color:var(--muted); margin:0">Click "Next" to begin the flow.</p>
+            </div>
+        </div>
+        <div id="ui-note"></div>
+    </div>
+</div>
+
+<!-- Bottom panel with tabs: Live state | PKCE playground -->
+<div class="panel" id="bottom-panel">
+    <div class="tab-buttons">
+        <button class="tab-button active" data-tab="state">Live state</button>
+        <button class="tab-button" data-tab="playground">PKCE playground</button>
+    </div>
+
+    <!-- Tab: Live state -->
+    <div class="tab-content active" id="tab-state">
+        <div class="state-cols">
+            <div>
+                <p style="color:var(--muted); font-size:12px; margin-top:0">🔒 secret (client memory only) · 👁 exposed on front-channel · <em>strikethrough</em> = consumed</p>
+
+                <div id="secret-verifier" class="secret-row locked empty">
+                    <div class="name">code_verifier</div>
+                    <div class="value">—</div>
+                </div>
+                <div id="secret-challenge" class="secret-row empty">
+                    <div class="name">code_challenge</div>
+                    <div class="value">—</div>
+                </div>
+                <div id="secret-state" class="secret-row empty">
+                    <div class="name">state</div>
+                    <div class="value">—</div>
+                </div>
+                <div id="secret-code" class="secret-row empty">
+                    <div class="name">code</div>
+                    <div class="value">—</div>
+                </div>
+                <div id="secret-access-token" class="secret-row empty">
+                    <div class="name">access_token</div>
+                    <div class="value">—</div>
+                </div>
+            </div>
+
+            <div>
+                <h3 style="margin-top:0">Channels seen so far</h3>
+                <div class="channel-line">
+                    <span class="badge front">front-channel</span>
+                    <span id="seen-front" style="color:var(--muted); font-size:11px; font-family:ui-monospace,monospace">—</span>
+                </div>
+                <div class="channel-line">
+                    <span class="badge back">back-channel</span>
+                    <span id="seen-back" style="color:var(--muted); font-size:11px; font-family:ui-monospace,monospace">—</span>
+                </div>
+
+                <h3>Auth server's stored session</h3>
+                <div id="server-session" style="font-family: ui-monospace, monospace; font-size:11px; background:var(--code-bg); padding:8px 10px; border-radius:4px; color:var(--muted); min-height:60px; white-space:pre-wrap; word-break:break-all;">(empty)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Playground -->
+    <div class="tab-content playground" id="tab-playground">
+        <p>Type any verifier (or click "Random") and watch the challenge update live. Same input → same output (deterministic). Different input → entirely different output (collision-resistant).</p>
+
+        <div class="row">
+            <span>code_verifier:</span>
+            <input id="pg-verifier" type="text" placeholder="type or click Random →" value="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk">
+        </div>
+        <div class="row">
+            <span>SHA-256 (hex):</span>
+            <div class="result mono" id="pg-hash">—</div>
+        </div>
+        <div class="row">
+            <span>base64url:</span>
+            <div class="result mono" id="pg-challenge">—</div>
+        </div>
+        <button id="pg-random" class="secondary" style="padding:6px 12px; font:12px/1 -apple-system, sans-serif; background:var(--panel); border:1px solid var(--border); border-radius:4px; cursor:pointer; margin-top:8px;">Random</button>
+
+        <p style="margin-top:14px; color:var(--muted); font-size:12px"><em>The default value is RFC 7636 §B.1's worked example — challenge should be <code>E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM</code>.</em></p>
+    </div>
+</div>
+
+<!-- Attack section, always visible; content swaps once step 6 completes -->
+<div class="panel attack-section" id="attack" style="margin-top:18px">
+    <h2>🦹 Try the attack</h2>
+
+    <!-- Shown until step 6 completes -->
+    <div id="attack-placeholder" style="padding:18px; background:var(--code-bg); border-radius:4px; color:var(--muted); font-size:13px;">
+        <strong style="color:var(--ink)">🔒 Unlocks after step 6.</strong>
+        Once you finish the walkthrough, this section lets you simulate an attacker
+        who watched the browser channel — they have the <code>code_challenge</code>,
+        <code>state</code>, and <code>code</code>, but not the <code>code_verifier</code>.
+        You'll be able to click two buttons here: one runs the attacker's POST <code>/token</code>
+        attempt and shows it being rejected by the PKCE check; the other runs the legitimate
+        client's POST for comparison.
+    </div>
+
+    <!-- Revealed once step 6 completes -->
+    <div id="attack-active" style="display:none">
+        <p>The flow is complete. An attacker who watched the browser channel saw <strong>steps 1 and 3</strong> — they have the <code>code_challenge</code>, <code>state</code>, and (after step 3) the <code>code</code>. The <code>code_verifier</code> never left the client. Let's see what the attacker can do with what they captured.</p>
+
+        <button id="attack-try">Attacker tries to redeem the stolen code</button>
+        <button id="attack-legit" class="legit">Client redeems normally (for comparison)</button>
+
+        <div id="attack-output"></div>
+    </div>
+</div>
+
+<!-- ─── Self-check + reading list ────────────────────────────────── -->
+<section class="panel" id="references" style="margin-top:18px">
+    <h2>Self-check &amp; further reading</h2>
+
+    <h3>Self-check</h3>
+    <p style="color:var(--muted); font-size:12px; margin-top:0">Try to answer before clicking "Show answer".</p>
+    <div class="quiz-grid">
+        <div class="quiz-card">
+            <p class="question">What does PKCE protect against, and why isn't TLS (HTTPS) alone enough?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Authorization-code interception. TLS protects the link between client and AS, but the redirect to <code>redirect_uri</code> exposes the code to the user-agent layer: browser history, OS deep-link routing, server access logs, Referer headers. A malicious app or a network observer on the user's device can grab the code. PKCE binds redemption to a verifier that never travels on that channel — the stolen code is useless without it.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question"><code>code_verifier</code> and <code>code_challenge</code> are mathematically related. Which is secret, and why?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                The verifier is secret (kept in client memory). The challenge is public (sent in the authorization URL). SHA-256 is one-way: given the challenge, you can't recover the verifier. So publishing the challenge in step 2 is safe, and only the original client (the one holding the verifier) can redeem the code in step 5.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">Why is <code>state</code> validated by the <em>client</em>, not the auth server?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Because <code>state</code> defends against <em>login CSRF</em> — an attacker tricking the client into accepting a code from an attacker-initiated flow. The auth server doesn't care; it just echoes the value back. The client is the one that needs to confirm "this callback corresponds to a flow I started." Only the client knows what value it generated.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">What's the wire format for the auth request query string AND the token request body? Why isn't either JSON?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Both use <code>application/x-www-form-urlencoded</code> — the same <code>key=value&amp;key=value</code> encoding. Auth request: in the URL query string. Token request: in the POST body. Not JSON because OAuth predates JSON's dominance, and the form-encoded format is what HTML forms produce — easy to debug, easy to log, no parser dependency.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">In the OpenID4VC mapping, who plays each of the four OAuth roles?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Resource Owner = the credential subject (the user). Client = the wallet. Authorization Server = the credential issuer's auth endpoint. Resource Server = the credential endpoint (which hands back the verifiable credential instead of API resources).
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">If <code>code_challenge_method=plain</code> is in the spec, why should you reject it in production code?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                With <code>plain</code>, the challenge equals the verifier — no hashing. An attacker who intercepts step 2 sees both the challenge and a directly-usable verifier. PKCE is defeated. Modern profiles (OAuth 2.1, OpenID4VC, OIDC FAPI) mandate <code>S256</code>.
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-top:24px">Further reading</h3>
+    <div class="ref-grid">
+        <a href="https://datatracker.ietf.org/doc/html/rfc6749" class="ref-card" target="_blank" rel="noopener">
+            <strong>RFC 6749</strong>
+            <div class="ref-title">OAuth 2.0</div>
+            <small>The foundational spec. §1–§5 are the canon. Long but readable.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc7636" class="ref-card" target="_blank" rel="noopener">
+            <strong>RFC 7636</strong>
+            <div class="ref-title">PKCE</div>
+            <small>Short and sharp. Contains the §B.1 test vector your Section 2 tests use.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc9700" class="ref-card" target="_blank" rel="noopener">
+            <strong>RFC 9700</strong>
+            <div class="ref-title">OAuth 2.0 Security Best Current Practice</div>
+            <small>The modern "what's actually safe" — supersedes the older BCP.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1" class="ref-card" target="_blank" rel="noopener">
+            <strong>OAuth 2.1</strong>
+            <div class="ref-title">Draft consolidation</div>
+            <small>Deprecates implicit flow. Makes PKCE mandatory for ALL clients.</small>
+        </a>
+    </div>
+</section>
+
+</div>
+
+<script>
+// ───────────────────────────────────────────────────────────────
+// Crypto helpers (real Web Crypto, not stubs)
+// ───────────────────────────────────────────────────────────────
+
+function bytesToBase64Url(bytes) {
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function bytesToHex(bytes) {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256(str) {
+    const buf = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return new Uint8Array(hash);
+}
+
+function randomBase64UrlBytes(n) {
+    const b = crypto.getRandomValues(new Uint8Array(n));
+    return bytesToBase64Url(b);
+}
+
+// ───────────────────────────────────────────────────────────────
+// Flow state
+// ───────────────────────────────────────────────────────────────
+
+const FLOW = {
+    clientId: 'wallet-app-42',
+    redirectUri: 'https://wallet.example.com/callback',
+    scope: 'openid email',
+    authEndpoint: 'https://auth.example.com/authorize',
+    tokenEndpoint: 'https://auth.example.com/token',
+
+    codeVerifier: null,
+    codeChallenge: null,
+    state: null,
+    code: null,
+    accessToken: null,
+
+    serverSession: null,
+    codeRedeemed: false,
+};
+
+const STEPS = [
+    { n: 0, title: 'Client-side prep',                   actor: 'Client',      to: 'Client',      channel: 'none'  },
+    { n: 1, title: 'Authorization request',              actor: 'Client',      to: 'Auth Server', channel: 'front' },
+    { n: 2, title: 'User authenticates + consents',      actor: 'User',        to: 'Auth Server', channel: 'front' },
+    { n: 3, title: 'Authorization response (callback)',  actor: 'Auth Server', to: 'Client',      channel: 'front' },
+    { n: 4, title: 'Client validates state',             actor: 'Client',      to: 'Client',      channel: 'none'  },
+    { n: 5, title: 'Token request',                      actor: 'Client',      to: 'Auth Server', channel: 'back'  },
+    { n: 6, title: 'Token response',                     actor: 'Auth Server', to: 'Client',      channel: 'back'  },
+];
+
+let currentStep = -1;
+const seenFront = new Set();
+const seenBack = new Set();
+
+// ───────────────────────────────────────────────────────────────
+// Step rendering — flow side
+// ───────────────────────────────────────────────────────────────
+
+const stepperEl = document.getElementById('stepper');
+const titleEl   = document.getElementById('step-title');
+const narrEl    = document.getElementById('step-narration');
+const httpEl    = document.getElementById('step-http');
+const serverEl  = document.getElementById('step-server');
+const actorBadge = document.getElementById('actor-badge');
+const recipientBadge = document.getElementById('recipient-badge');
+const channelBadge = document.getElementById('channel-badge');
+
+function renderStepper() {
+    stepperEl.innerHTML = STEPS.map((s, i) => {
+        const cls = i === currentStep ? 'active' : (i < currentStep ? 'done' : '');
+        return `<button class="${cls}" data-i="${i}">${i}. ${s.title.split(' ').slice(0,3).join(' ')}</button>`;
+    }).join('');
+    stepperEl.querySelectorAll('button').forEach(b => {
+        b.onclick = () => jumpToStep(parseInt(b.dataset.i));
+    });
+}
+
+function setBadge(el, text, className) {
+    el.textContent = text;
+    el.className = 'badge ' + className;
+}
+
+function renderStepMeta(s) {
+    setBadge(actorBadge, s.actor, actorClass(s.actor));
+    setBadge(recipientBadge, s.to, actorClass(s.to));
+    setBadge(channelBadge,
+        s.channel === 'front' ? 'front-channel'
+        : s.channel === 'back' ? 'back-channel'
+        : 'no network',
+        s.channel === 'front' ? 'front' : s.channel === 'back' ? 'back' : 'none'
+    );
+    titleEl.textContent = `Step ${s.n} — ${s.title}`;
+}
+
+function actorClass(name) {
+    if (name === 'Client') return 'client';
+    if (name === 'User') return 'user';
+    if (name === 'Auth Server') return 'server';
+    return 'none';
+}
+
+// ───────────────────────────────────────────────────────────────
+// UI mock rendering — browser-view side
+// ───────────────────────────────────────────────────────────────
+
+const mockBrowser = document.getElementById('browser-mock');
+const mockActor = document.getElementById('mock-actor');
+const mockUrl = document.getElementById('mock-url');
+const mockContent = document.getElementById('mock-content');
+const uiNoteEl = document.getElementById('ui-note');
+
+function renderUIMock(i) {
+    const flow = FLOW;
+    let actor = '—', actorCls = 'transit', url = 'about:blank', content = '', note = '', noteCls = 'none', transit = false;
+
+    if (i === -1) {
+        actor = '—'; actorCls = 'transit';
+        url = 'about:blank';
+        content = `<p style="color:var(--muted); margin:0">Click "Next" to begin the flow.</p>`;
+    }
+    else if (i === 0) {
+        actor = 'Wallet App'; actorCls = 'client';
+        url = '🔒 https://wallet.example.com';
+        content = `
+            <div style="text-align:center; padding:10px">
+                <h3 style="margin-top:0">Welcome to Wallet</h3>
+                <p style="color:var(--muted); font-size:13px">Connect your account to manage credentials.</p>
+                <div class="mock-button">Sign in with Auth Server</div>
+            </div>
+        `;
+        note = `<strong>Behind the scenes:</strong> the client just generated <code>code_verifier</code>, <code>code_challenge</code>, and <code>state</code> locally. The user hasn't clicked anything yet on screen, but three values now exist in client memory (check the Live state tab).`;
+        noteCls = 'none';
+    }
+    else if (i === 1) {
+        actor = 'Browser navigating…'; actorCls = 'transit'; transit = true;
+        url = '🔒 ' + flow.authEndpoint + '?response_type=code&client_id=' + flow.clientId + '&…';
+        content = `
+            <div style="text-align:center; padding:30px 0">
+                <div class="mock-spinner"></div>
+                <span style="color:var(--muted)">Redirecting to auth.example.com…</span>
+            </div>
+        `;
+        note = `<strong>Front-channel:</strong> the user's browser is doing a full-page navigation to the auth server. Every parameter (including <code>code_challenge</code> and <code>state</code>) is in the URL bar — visible to browser history, OS deep-link routing, etc.`;
+        noteCls = '';
+    }
+    else if (i === 2) {
+        actor = 'Auth Server'; actorCls = 'server';
+        url = '🔒 https://auth.example.com/login';
+        content = `
+            <h3 style="margin-top:0">Sign in to Auth Server</h3>
+            <div class="mock-label">Email</div>
+            <input class="mock-input" value="user@example.com" readonly>
+            <div class="mock-label">Password</div>
+            <input class="mock-input" type="password" value="••••••••••" readonly>
+            <div class="mock-button">Sign in</div>
+
+            <hr style="border:none; border-top:1px solid var(--border); margin:18px 0">
+
+            <div class="mock-card">
+                <strong>Wallet App wants:</strong>
+                <ul style="margin:6px 0 10px 18px; padding:0; font-size:13px">
+                    <li>openid (sign-in identity)</li>
+                    <li>email</li>
+                </ul>
+                <div class="mock-button">Allow</div>
+                <div class="mock-button muted">Deny</div>
+            </div>
+        `;
+        note = `<strong>Critical:</strong> the user is now on <code>auth.example.com</code> — the auth server's domain. The password is typed into a form the auth server rendered, not the wallet app. The wallet never sees the password. The auth server can use any method here: passkey, MFA, federated sign-in, etc.`;
+        noteCls = '';
+    }
+    else if (i === 3) {
+        actor = 'Browser redirecting…'; actorCls = 'transit'; transit = true;
+        const shortCode = flow.code ? flow.code.slice(0, 24) + '…' : 'code=…';
+        url = '🔒 ' + flow.redirectUri + '?code=' + shortCode + '&state=' + (flow.state || '…');
+        content = `
+            <div style="text-align:center; padding:30px 0">
+                <div class="mock-spinner"></div>
+                <span style="color:var(--muted)">302 redirect → wallet.example.com/callback</span>
+            </div>
+        `;
+        note = `<strong>Front-channel exposure:</strong> the <code>code</code> is now visible in the browser's URL bar, browser history, server logs, any Referer headers a callback page sends. This is exactly what PKCE protects against — the code can be stolen here, but the verifier never can be.`;
+        noteCls = '';
+    }
+    else if (i === 4) {
+        actor = 'Wallet App'; actorCls = 'client';
+        url = '🔒 ' + flow.redirectUri;
+        const stateOk = (flow.state === flow.serverSession?.state);
+        content = `
+            <h3 style="margin-top:0">Signing you in…</h3>
+            <p style="color:var(--muted); font-size:13px">Verifying the callback…</p>
+            <div class="mock-status">
+                <span class="ok">✓</span> state parameter matches the one we generated
+            </div>
+            <div class="mock-status">
+                <span class="mock-spinner"></span> exchanging code for token…
+            </div>
+        `;
+        note = `<strong>No network call:</strong> the wallet's JavaScript at <code>/callback</code> just compares <code>?state=</code> from the URL against the value it stored before step 1. If they match (they do here), proceed to step 5.`;
+        noteCls = 'none';
+    }
+    else if (i === 5) {
+        actor = 'Wallet App'; actorCls = 'client';
+        url = '🔒 ' + flow.redirectUri;
+        content = `
+            <h3 style="margin-top:0">Signing you in…</h3>
+            <div class="mock-status">
+                <span class="ok">✓</span> state parameter matches
+            </div>
+            <div class="mock-status">
+                <span class="mock-spinner"></span> POST /token (back-channel, invisible to the user)
+            </div>
+            <div style="margin-top:14px; font-size:11px; color:var(--muted); font-family:ui-monospace,monospace; background:var(--code-bg); padding:8px 10px; border-radius:4px">
+                fetch('${flow.tokenEndpoint}', {<br>
+                &nbsp;&nbsp;method: 'POST',<br>
+                &nbsp;&nbsp;headers: { 'Content-Type': 'application/x-www-form-urlencoded' },<br>
+                &nbsp;&nbsp;body: …code_verifier=${flow.codeVerifier?.slice(0, 12) || '…'}…<br>
+                })
+            </div>
+        `;
+        note = `<strong>Back-channel:</strong> this is a direct <code>fetch()</code> from the wallet to the token endpoint. The user's URL bar doesn't change — no browser navigation. The <code>code_verifier</code> appears on the wire for the first and only time, on a channel separate from where the <code>code</code> traveled.`;
+        noteCls = 'back';
+    }
+    else if (i === 6) {
+        actor = 'Wallet App'; actorCls = 'client';
+        url = '🔒 ' + flow.redirectUri.replace('/callback', '/dashboard');
+        content = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+                <h3 style="margin:0">Wallet</h3>
+                <span style="font-size:12px; color:var(--muted)">user@example.com</span>
+            </div>
+            <div class="mock-card">
+                <strong>You're signed in ✓</strong>
+                <p style="margin:4px 0 0; font-size:12px; color:var(--muted)">Access token stored, expires in 3600s.</p>
+            </div>
+            <div class="mock-card" style="margin-top:10px">
+                <strong>Your credentials</strong>
+                <p style="margin:4px 0 0; font-size:12px; color:var(--muted)">(empty — no VCs issued yet)</p>
+            </div>
+            <div style="margin-top:10px">
+                <span class="mock-button muted">Sign out</span>
+            </div>
+        `;
+        note = `<strong>Flow complete.</strong> The wallet now holds an <code>access_token</code> (and possibly a <code>refresh_token</code>). The user sees their app in a logged-in state. The password never left the auth server's domain; the verifier never left the wallet's memory.`;
+        noteCls = 'back';
+    }
+
+    mockActor.textContent = actor;
+    mockActor.className = 'browser-actor ' + actorCls;
+    mockUrl.textContent = url;
+    mockContent.innerHTML = content;
+    mockBrowser.classList.toggle('transit', transit);
+
+    if (note) {
+        uiNoteEl.innerHTML = `<div class="ui-note ${noteCls}">${note}</div>`;
+    } else {
+        uiNoteEl.innerHTML = '';
+    }
+}
+
+// ───────────────────────────────────────────────────────────────
+// State application — each step mutates FLOW + writes flow narration
+// ───────────────────────────────────────────────────────────────
+
+async function applyStep(i) {
+    const s = STEPS[i];
+
+    if (i === 0) {
+        FLOW.codeVerifier = randomBase64UrlBytes(32);
+        FLOW.state = randomBase64UrlBytes(16);
+        const hash = await sha256(FLOW.codeVerifier);
+        FLOW.codeChallenge = bytesToBase64Url(hash);
+
+        narrEl.innerHTML = `
+            The client locally generates three values — <span class="highlight">no network call yet</span>.
+            All three live in client memory; only two of them will ever leave.
+            <ul>
+                <li><code>code_verifier</code> — random 32-byte string, base64url-encoded → <strong>43 chars</strong>. <span class="highlight">SECRET — stays in client memory.</span></li>
+                <li><code>code_challenge</code> = <code>base64url(SHA-256(code_verifier))</code> — derived, also 43 chars. <span class="highlight">Will travel publicly in step 1.</span></li>
+                <li><code>state</code> — random opaque token (16 bytes here). Will be sent in step 1 and verified in step 3 (CSRF protection).</li>
+            </ul>
+        `;
+        httpEl.innerHTML = '';
+        serverEl.innerHTML = '';
+    }
+
+    else if (i === 1) {
+        narrEl.innerHTML = `
+            The client builds an authorization URL and <span class="highlight">redirects the user's browser</span> to it.
+            All parameters travel <strong>as query parameters in the URL</strong> — observable by anyone watching the front-channel.
+            <p>Notice what's sent: <code>code_challenge</code> ✓, <code>state</code> ✓ — but <strong>NOT <code>code_verifier</code></strong>. The verifier stays in client memory.</p>
+        `;
+        const url = `${FLOW.authEndpoint}?` +
+            `response_type=code` +
+            `&client_id=${encodeURIComponent(FLOW.clientId)}` +
+            `&redirect_uri=${encodeURIComponent(FLOW.redirectUri)}` +
+            `&scope=${encodeURIComponent(FLOW.scope)}` +
+            `&state=${FLOW.state}` +
+            `&code_challenge=${FLOW.codeChallenge}` +
+            `&code_challenge_method=S256`;
+        httpEl.innerHTML = `<pre>GET ${url}</pre>`;
+        serverEl.innerHTML = `
+            <div class="server-actions">
+                <strong>Auth server, on receipt:</strong>
+                <ol>
+                    <li>Looks up <code>client_id</code>. Rejects if unknown.</li>
+                    <li>Verifies <code>redirect_uri</code> matches one pre-registered for that client.</li>
+                    <li>Stores <code>client_id</code>, <code>redirect_uri</code>, <code>scope</code>, <code>state</code>, <code>code_challenge</code>, <code>code_challenge_method</code> in a server-side session.</li>
+                    <li>Renders the login + consent page.</li>
+                </ol>
+                <em>The server stores the challenge. It cannot see the verifier — and won't, until step 5.</em>
+            </div>
+        `;
+        FLOW.serverSession = {
+            client_id: FLOW.clientId,
+            redirect_uri: FLOW.redirectUri,
+            scope: FLOW.scope,
+            state: FLOW.state,
+            code_challenge: FLOW.codeChallenge,
+            code_challenge_method: 'S256',
+        };
+        seenFront.add('client_id');
+        seenFront.add('redirect_uri');
+        seenFront.add('scope');
+        seenFront.add('state');
+        seenFront.add('code_challenge');
+    }
+
+    else if (i === 2) {
+        narrEl.innerHTML = `
+            <p>The user is now on the auth server's domain. They type their password into a form the <strong>auth server</strong> rendered (not the client). The client never sees the password.</p>
+            <p>This step is off-protocol — pure user ↔ auth-server interaction. Could be password, MFA, federated login, passkey, etc.</p>
+            <p>On success, the auth server mints a short-lived <strong><code>code</code></strong> and binds it to the session it stored in step 1.</p>
+        `;
+        FLOW.code = 'SplxlOBeZQQYbYS6WxSbIA-' + randomBase64UrlBytes(8);
+        httpEl.innerHTML = `<pre style="background:#f5f5f5">(login form + consent screen — no API call to show)</pre>`;
+        serverEl.innerHTML = `
+            <div class="server-actions">
+                <strong>Auth server:</strong>
+                <ol>
+                    <li>Verifies user credentials.</li>
+                    <li>Shows consent: "Wallet App wants: openid, email — Allow?". User clicks Allow.</li>
+                    <li>Mints <code>code = ${FLOW.code}</code> — short-lived (60s), single-use.</li>
+                    <li>Associates the code with the stored session (so code → client_id, redirect_uri, code_challenge, user identity).</li>
+                </ol>
+            </div>
+        `;
+    }
+
+    else if (i === 3) {
+        narrEl.innerHTML = `
+            The auth server sends a 302 redirect. The browser navigates back to the client's <code>redirect_uri</code>, with <code>code</code> and <code>state</code> as query parameters.
+            <p>The code is now <span class="highlight">on the front-channel</span> — observable in browser history, server logs, OS deep-link routing, etc. This is exactly what PKCE protects against.</p>
+        `;
+        httpEl.innerHTML = `<pre>HTTP/1.1 302 Found
+Location: ${FLOW.redirectUri}?code=${FLOW.code}&state=${FLOW.state}</pre>`;
+        serverEl.innerHTML = '';
+        seenFront.add('code');
+    }
+
+    else if (i === 4) {
+        const ok = (FLOW.state === FLOW.serverSession.state);
+        narrEl.innerHTML = `
+            <p>The client's code at <code>/callback</code> runs. First thing it does: <strong>verify <code>state</code></strong>.</p>
+            <p>The client compares the <code>state</code> in the callback URL with the one it generated in step 0 and stored locally.</p>
+            <p style="margin-top:10px"><strong>Match: ${ok ? '✅ proceed' : '❌ reject (CSRF — someone tried to inject a foreign code)'}.</strong></p>
+            <p style="margin-top:10px; font-size:12px; color:var(--muted)"><strong>Why the client does this check, not the AS:</strong> the AS treats <code>state</code> as opaque — it just echoes it back unchanged in step 4 (notice it never <em>used</em> the value, only stored and returned it). The CSRF threat is to the <em>client</em>: an attacker tricking the client into accepting a code from a flow the user never initiated. Only the client knows what <code>state</code> value <em>it</em> generated for <em>this</em> user's session, so only the client can verify the callback corresponds to its own pending flow.</p>
+        `;
+        httpEl.innerHTML = `<pre>// Client side
+const returnedState = new URLSearchParams(location.search).get('state');
+if (returnedState !== storedState) throw new Error('CSRF: state mismatch');
+// proceed to step 5</pre>`;
+        serverEl.innerHTML = '';
+    }
+
+    else if (i === 5) {
+        narrEl.innerHTML = `
+            <p>The client makes a <strong>direct HTTP POST to <code>/token</code></strong>. This is the <span class="highlight">back-channel</span> — no browser involved, no user-agent, no URL-bar. Just client ↔ auth server over HTTPS.</p>
+            <p>This is the <strong>first and only time the <code>code_verifier</code> appears on the wire</strong>.</p>
+            <p style="margin-top:10px; font-size:12px; color:var(--muted)"><strong>Why <code>application/x-www-form-urlencoded</code> and not JSON?</strong> Three reasons:</p>
+            <ul style="margin-top:4px; font-size:12px; color:var(--muted); padding-left:18px">
+                <li><strong>Maximum compatibility.</strong> HTML forms, <code>curl</code>, and every web framework produce form-encoded bodies for free. A <code>/token</code> request can be sent without any JSON library. OAuth 2.0 prioritized broad adoption over modern ergonomics.</li>
+                <li><strong>The data is flat.</strong> A <code>/token</code> request is a handful of scalar values (<code>grant_type</code>, <code>code</code>, <code>client_id</code>, <code>redirect_uri</code>, <code>code_verifier</code>) — no nesting, no arrays, no structured types. JSON's strengths don't apply here.</li>
+                <li><strong>Historical inheritance.</strong> OAuth 1.0 (2009) predated JSON's wire-format dominance; OAuth 2.0 (2012) kept the conventions. The fact that step 1's query string is the same encoding is a downstream consequence — form-encoded works in URLs too.</li>
+            </ul>
+            <p style="margin-top:6px; font-size:12px; color:var(--muted)">The step-6 <em>response</em> is JSON, though — because it carries a structured object (token + scope + expiry + optional refresh) where nesting starts to earn its keep.</p>
+        `;
+        httpEl.innerHTML = `<pre>POST ${FLOW.tokenEndpoint}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&code=${FLOW.code}
+&redirect_uri=${encodeURIComponent(FLOW.redirectUri)}
+&client_id=${FLOW.clientId}
+&code_verifier=${FLOW.codeVerifier}</pre>`;
+        const submittedHash = await sha256(FLOW.codeVerifier);
+        const computedChallenge = bytesToBase64Url(submittedHash);
+        const match = computedChallenge === FLOW.serverSession.code_challenge;
+        serverEl.innerHTML = `
+            <div class="server-actions">
+                <strong>Auth server validates (fail-fast):</strong>
+                <ol>
+                    <li>Authenticates client. <em>(public client, no secret — sanity-check client_id is registered. PKCE in step 4 below is the substantive auth.)</em></li>
+                    <li>Looks up <code>code</code> in storage: ✅ found, not expired, not redeemed.</li>
+                    <li>Checks code was issued to <em>this</em> client: <code>${FLOW.clientId}</code> ${FLOW.serverSession.client_id === FLOW.clientId ? '✅' : '❌'} matches stored.</li>
+                    <li>Computes <code>expected = base64url(SHA-256(submitted_verifier))</code><br>
+                        &nbsp;&nbsp;= <code style="font-size:10px">${computedChallenge}</code><br>
+                        Compares to stored <code>code_challenge</code>:<br>
+                        &nbsp;&nbsp;= <code style="font-size:10px">${FLOW.serverSession.code_challenge}</code><br>
+                        ${match ? '✅ match' : '❌ mismatch'}.
+                    </li>
+                    <li>Checks <code>redirect_uri</code> ${FLOW.serverSession.redirect_uri === FLOW.redirectUri ? '✅' : '❌'} matches stored.</li>
+                    <li>Marks code as redeemed.</li>
+                    <li>Mints access_token.</li>
+                </ol>
+            </div>
+        `;
+        FLOW.codeRedeemed = true;
+        FLOW.accessToken = 'eyJ' + randomBase64UrlBytes(32);
+        seenBack.add('code_verifier');
+        seenBack.add('code (this time back-channel)');
+    }
+
+    else if (i === 6) {
+        narrEl.innerHTML = `
+            <p>The auth server returns <strong>JSON</strong> (the request in step 5 was form-encoded; the response is JSON).</p>
+            <p>The client now has an <code>access_token</code>. The flow is complete.</p>
+        `;
+        httpEl.innerHTML = `<pre>HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+    "access_token": "${FLOW.accessToken}",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "scope": "openid email"
+}</pre>`;
+        serverEl.innerHTML = '';
+        seenBack.add('access_token');
+    }
+
+    renderStepMeta(STEPS[i]);
+    renderUIMock(i);
+    renderSecrets();
+    renderStepper();
+    document.getElementById('attack-placeholder').style.display = (i >= 6) ? 'none' : 'block';
+    document.getElementById('attack-active').style.display = (i >= 6) ? 'block' : 'none';
+}
+
+// ───────────────────────────────────────────────────────────────
+// Secrets panel
+// ───────────────────────────────────────────────────────────────
+
+function setSecretRow(id, value, opts) {
+    const row = document.getElementById(id);
+    const valueEl = row.querySelector('.value');
+    if (value) {
+        valueEl.textContent = value;
+        row.classList.remove('empty');
+    } else {
+        valueEl.textContent = '—';
+        row.classList.add('empty');
+    }
+    row.classList.toggle('locked',  !!opts?.locked);
+    row.classList.toggle('exposed', !!opts?.exposed);
+    row.classList.toggle('used',    !!opts?.used);
+}
+
+function renderSecrets() {
+    setSecretRow('secret-verifier', FLOW.codeVerifier,
+        FLOW.codeVerifier
+            ? (seenBack.has('code_verifier') ? {} : { locked: true })
+            : { locked: true });
+
+    setSecretRow('secret-challenge', FLOW.codeChallenge,
+        FLOW.codeChallenge ? (seenFront.has('code_challenge') ? { exposed: true } : {}) : {});
+
+    setSecretRow('secret-state', FLOW.state,
+        FLOW.state ? (seenFront.has('state') ? { exposed: true } : {}) : {});
+
+    setSecretRow('secret-code', FLOW.code,
+        FLOW.code
+            ? (FLOW.codeRedeemed ? { exposed: true, used: true }
+                : seenFront.has('code') ? { exposed: true } : {})
+            : {});
+
+    setSecretRow('secret-access-token', FLOW.accessToken,
+        FLOW.accessToken ? {} : {});
+
+    document.getElementById('seen-front').textContent =
+        seenFront.size === 0 ? '(nothing yet)' : Array.from(seenFront).join(', ');
+    document.getElementById('seen-back').textContent =
+        seenBack.size === 0 ? '(nothing yet)' : Array.from(seenBack).join(', ');
+
+    const sess = FLOW.serverSession;
+    document.getElementById('server-session').textContent =
+        sess ? JSON.stringify(sess, null, 2) : '(empty)';
+}
+
+// ───────────────────────────────────────────────────────────────
+// Navigation
+// ───────────────────────────────────────────────────────────────
+
+async function next() {
+    if (currentStep >= STEPS.length - 1) return;
+    currentStep++;
+    await applyStep(currentStep);
+    updateButtons();
+}
+
+function prev() {
+    if (currentStep <= 0) { reset(); return; }
+    const target = currentStep - 1;
+    resetSilent();
+    replayTo(target);
+}
+
+async function replayTo(target) {
+    for (let i = 0; i <= target; i++) {
+        currentStep = i;
+        await applyStep(i);
+    }
+    updateButtons();
+}
+
+async function jumpToStep(i) {
+    resetSilent();
+    await replayTo(i);
+}
+
+function resetSilent() {
+    currentStep = -1;
+    FLOW.codeVerifier = null;
+    FLOW.codeChallenge = null;
+    FLOW.state = null;
+    FLOW.code = null;
+    FLOW.accessToken = null;
+    FLOW.serverSession = null;
+    FLOW.codeRedeemed = false;
+    seenFront.clear();
+    seenBack.clear();
+}
+
+function reset() {
+    resetSilent();
+    titleEl.textContent = 'Click "Next" to begin →';
+    narrEl.innerHTML = 'The flow has 7 steps (0 through 6). Each step shows: who acts, where the data goes, on which channel, and what the auth server stores/verifies. The Live state tab below tracks every secret in real time.';
+    httpEl.innerHTML = '';
+    serverEl.innerHTML = '';
+    document.getElementById('attack-placeholder').style.display = 'block';
+    document.getElementById('attack-active').style.display = 'none';
+    document.getElementById('attack-output').innerHTML = '';
+    setBadge(actorBadge, '—', 'none');
+    setBadge(recipientBadge, '—', 'none');
+    setBadge(channelBadge, '—', 'none');
+    renderUIMock(-1);
+    renderSecrets();
+    renderStepper();
+    updateButtons();
+}
+
+function updateButtons() {
+    document.getElementById('prev').disabled = currentStep <= -1;
+    document.getElementById('next').disabled = currentStep >= STEPS.length - 1;
+}
+
+document.getElementById('next').onclick = next;
+document.getElementById('prev').onclick = prev;
+document.getElementById('reset').onclick = reset;
+
+// ───────────────────────────────────────────────────────────────
+// Tab switching (Live state / Playground)
+// ───────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab-button').forEach(b => {
+    b.onclick = () => switchTab(b.dataset.tab);
+});
+
+function switchTab(name) {
+    document.querySelectorAll('.tab-button').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.tab-content').forEach(c =>
+        c.classList.toggle('active', c.id === 'tab-' + name));
+}
+
+// ───────────────────────────────────────────────────────────────
+// Attack simulation
+// ───────────────────────────────────────────────────────────────
+
+document.getElementById('attack-try').onclick = async () => {
+    const attackerSubmits = FLOW.codeChallenge;
+    const hash = await sha256(attackerSubmits);
+    const computed = bytesToBase64Url(hash);
+    const matches = computed === FLOW.serverSession.code_challenge;
+    const alreadyRedeemed = FLOW.codeRedeemed;
+
+    document.getElementById('attack-output').innerHTML = `
+        <h3>Attacker's POST /token attempt</h3>
+        <pre>POST ${FLOW.tokenEndpoint}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&code=${FLOW.code}
+&redirect_uri=${encodeURIComponent(FLOW.redirectUri)}
+&client_id=${FLOW.clientId}
+&code_verifier=${attackerSubmits}    ← attacker has to guess; tries the challenge itself</pre>
+
+        <div class="attack-result fail">
+            <strong>${alreadyRedeemed ? '❌ Rejected — code already redeemed' : '❌ Rejected'}</strong><br>
+            ${alreadyRedeemed
+                ? `Even ignoring single-use enforcement, the PKCE check would fail:`
+                : `PKCE check fails:`}<br>
+            SHA-256(<code style="font-size:10px">${attackerSubmits}</code>) = <code style="font-size:10px">${computed}</code><br>
+            stored challenge = <code style="font-size:10px">${FLOW.serverSession.code_challenge}</code><br>
+            ${matches ? 'match' : '<strong>mismatch</strong>'} → reject.
+        </div>
+
+        <p style="margin-top:10px"><strong>Why the attacker can't win:</strong> they have the <em>hash</em> of the verifier (the challenge), but they'd need the <em>verifier</em> itself. SHA-256 is one-way — given the hash, recovering the input is computationally infeasible. The verifier never left the client's memory.</p>
+    `;
+};
+
+document.getElementById('attack-legit').onclick = async () => {
+    const hash = await sha256(FLOW.codeVerifier);
+    const computed = bytesToBase64Url(hash);
+    document.getElementById('attack-output').innerHTML = `
+        <h3>Legitimate client's POST /token (step 5, replayed for contrast)</h3>
+        <pre>POST ${FLOW.tokenEndpoint}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&code=${FLOW.code}
+&redirect_uri=${encodeURIComponent(FLOW.redirectUri)}
+&client_id=${FLOW.clientId}
+&code_verifier=${FLOW.codeVerifier}    ← real verifier, stayed in client memory the whole time</pre>
+
+        <div class="attack-result success">
+            <strong>✅ Accepted</strong> (assuming this is the first redemption — single-use is enforced).<br>
+            SHA-256(verifier) = <code style="font-size:10px">${computed}</code><br>
+            matches stored challenge = <code style="font-size:10px">${FLOW.serverSession.code_challenge}</code> → proceed.
+        </div>
+    `;
+};
+
+// ───────────────────────────────────────────────────────────────
+// PKCE playground (live SHA-256)
+// ───────────────────────────────────────────────────────────────
+
+const pgVerifier = document.getElementById('pg-verifier');
+const pgHash = document.getElementById('pg-hash');
+const pgChallenge = document.getElementById('pg-challenge');
+
+async function updatePlayground() {
+    const v = pgVerifier.value || '';
+    if (!v) {
+        pgHash.textContent = '—';
+        pgChallenge.textContent = '—';
+        return;
+    }
+    const hashBytes = await sha256(v);
+    pgHash.textContent = bytesToHex(hashBytes);
+    pgChallenge.textContent = bytesToBase64Url(hashBytes);
+}
+
+pgVerifier.addEventListener('input', updatePlayground);
+document.getElementById('pg-random').onclick = () => {
+    pgVerifier.value = randomBase64UrlBytes(32);
+    updatePlayground();
+};
+
+// ───────────────────────────────────────────────────────────────
+// Background section tabs (Roles / Tokens / Roadmap)
+// ───────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.bg-tab-button').forEach(b => {
+    b.onclick = () => {
+        const name = b.dataset.bg;
+        document.querySelectorAll('.bg-tab-button').forEach(x =>
+            x.classList.toggle('active', x.dataset.bg === name));
+        document.querySelectorAll('.bg-tab-content').forEach(c =>
+            c.classList.toggle('active', c.id === 'bg-' + name));
+    };
+});
+
+// ───────────────────────────────────────────────────────────────
+// Quiz reveal buttons
+// ───────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.reveal-btn').forEach(b => {
+    b.onclick = () => {
+        const card = b.closest('.quiz-card');
+        const answer = card.querySelector('.answer');
+        answer.classList.toggle('hidden');
+        b.textContent = answer.classList.contains('hidden') ? 'Show answer' : 'Hide answer';
+    };
+});
+
+// ───────────────────────────────────────────────────────────────
+// Init
+// ───────────────────────────────────────────────────────────────
+
+reset();
+updatePlayground();
+
+</script>
+
+</body>
+</html>

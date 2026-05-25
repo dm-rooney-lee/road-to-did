@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OAuth 2.0 — Failure & Recovery at Scale</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --client: #1e6fff;
+        --server: #c8332b;
+        --store: #8b008b;
+        --cdn: #14834b;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 14px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.55 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 6px 0;
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+
+    .layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 24px;
+    }
+    @media (max-width: 920px) {
+        .layout { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Sidebar TOC ───────────────────────────────────────── */
+    .toc {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        font-size: 13px;
+    }
+    .toc h3 { margin-top: 0; }
+    .toc a {
+        display: block;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 5px 8px;
+        border-radius: 4px;
+        line-height: 1.3;
+    }
+    .toc a:hover { background: var(--code-bg); color: var(--ink); }
+    .toc .step-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--server);
+        text-transform: uppercase;
+        margin-top: 12px;
+        padding: 0 8px;
+    }
+
+    /* ─── Panels ────────────────────────────────────────────── */
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+    .panel h2 .step-tag {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--server);
+        background: #fbe9e7;
+        padding: 2px 8px;
+        border-radius: 11px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    /* ─── Failure block ─────────────────────────────────────── */
+    .failure-block {
+        background: #fbe9e7;
+        border-left: 3px solid var(--danger);
+        padding: 12px 14px;
+        border-radius: 0 4px 4px 0;
+        margin: 12px 0 18px;
+    }
+    .failure-block strong { color: var(--danger); }
+
+    /* ─── Service topology ──────────────────────────────────── */
+    .topology {
+        display: flex;
+        gap: 0;
+        align-items: stretch;
+        flex-wrap: wrap;
+        padding: 14px 8px;
+        background: #fafaf7;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin: 10px 0;
+        min-height: 90px;
+        overflow-x: auto;
+    }
+    .node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        font-size: 11px;
+        font-weight: 500;
+        min-width: 70px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .node.client { border-color: var(--client); color: var(--client); }
+    .node.as     { border-color: var(--server); color: var(--server); }
+    .node.store  { border-color: var(--store);  color: var(--store); }
+    .node.cdn    { border-color: var(--cdn);    color: var(--cdn); }
+    .node.gateway { border-color: var(--warn); color: #8a6500; }
+    .node small  { font-size: 10px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+    .node.failed {
+        background: #fbe9e7;
+        border-color: var(--danger);
+        color: var(--danger);
+        position: relative;
+    }
+    .node.failed::after {
+        content: "💥";
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        font-size: 14px;
+    }
+    .node.recovered {
+        background: #e0f1e5;
+        border-color: var(--success);
+        color: var(--success);
+    }
+    .arrow {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-width: 60px;
+        position: relative;
+        color: var(--muted);
+        font-size: 11px;
+    }
+    .arrow .label {
+        font-size: 10px;
+        margin-bottom: 2px;
+        text-align: center;
+        line-height: 1.2;
+        max-width: 100px;
+    }
+    .arrow .line {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 14px;
+    }
+    .arrow.failed { color: var(--danger); }
+    .arrow.failed .line::after { content: " ✗"; font-size: 13px; color: var(--danger); }
+    .arrow.success { color: var(--success); }
+    .arrow.success .line::after { content: " ✓"; font-size: 13px; color: var(--success); }
+    .arrow.dashed .line {
+        font-style: italic;
+        color: var(--warn);
+    }
+    .arrow .sublabel { font-size: 9px; margin-top: 2px; color: var(--muted); }
+
+    /* ─── Solution grid ─────────────────────────────────────── */
+    .solution-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+        gap: 16px;
+        margin: 14px 0;
+    }
+    .solution-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: #fbfbf7;
+    }
+    .solution-card h4 {
+        margin: 0 0 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .tag.client { background: #e7f0ff; color: var(--client); }
+    .tag.server { background: #fbe9e7; color: var(--server); }
+    .tag.infra  { background: #f0e6f8; color: var(--store); }
+    .tag.arch   { background: #e0f1e5; color: var(--cdn); }
+    .solution-card .desc { font-size: 13px; color: var(--ink); margin: 4px 0 8px; }
+    .solution-card .pros, .solution-card .cons {
+        font-size: 12px; margin: 4px 0;
+    }
+    .solution-card .pros { color: var(--success); }
+    .solution-card .cons { color: var(--danger); }
+
+    /* ─── Timeline (for backoff sequences) ──────────────────── */
+    .timeline {
+        display: grid;
+        grid-template-columns: 50px 1fr 80px;
+        gap: 6px;
+        font-size: 11px;
+        font-family: ui-monospace, monospace;
+        margin: 6px 0;
+        padding: 8px 10px;
+        background: var(--code-bg);
+        border-radius: 4px;
+    }
+    .timeline .t { color: var(--muted); }
+    .timeline .ev { color: var(--ink); }
+    .timeline .result { text-align: right; }
+    .timeline .result.ok { color: var(--success); font-weight: 600; }
+    .timeline .result.fail { color: var(--danger); }
+
+    /* ─── Combine note ──────────────────────────────────────── */
+    .combine-note {
+        background: #fff4d0;
+        border-left: 3px solid var(--warn);
+        padding: 10px 14px;
+        border-radius: 0 4px 4px 0;
+        margin: 14px 0;
+        font-size: 13px;
+    }
+    .combine-note .matrix {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        margin-top: 8px;
+        background: var(--panel);
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+    }
+    .combine-note table {
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-size: 12px;
+    }
+    .combine-note td, .combine-note th {
+        border: 1px solid var(--border);
+        padding: 4px 8px;
+        text-align: center;
+    }
+    .combine-note th { background: var(--code-bg); font-weight: 600; }
+    .combine-note .yes { background: #e0f1e5; color: var(--success); font-weight: 600; }
+    .combine-note .no  { background: #fbe9e7; color: var(--danger); font-weight: 600; }
+    .combine-note .alt { background: #fff4d0; color: #8a6500; font-weight: 600; }
+
+    /* ─── Interactive lost-response simulator ───────────────── */
+    .sim {
+        background: var(--panel);
+        border: 2px dashed var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        margin: 14px 0;
+    }
+    .sim h4 { margin-top: 0; }
+    .sim .controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 10px 0;
+    }
+    .sim button {
+        padding: 7px 12px;
+        font: 12px/1 -apple-system, sans-serif;
+        background: var(--ink);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .sim button.secondary { background: var(--panel); color: var(--ink); border: 1px solid var(--border); }
+    .sim .log {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        background: var(--code-bg);
+        padding: 10px 12px;
+        border-radius: 4px;
+        min-height: 60px;
+        max-height: 240px;
+        overflow-y: auto;
+        margin: 10px 0;
+        white-space: pre-wrap;
+    }
+    .sim .log .ev { margin: 2px 0; }
+    .sim .log .ev.ok    { color: var(--success); }
+    .sim .log .ev.fail  { color: var(--danger); }
+    .sim .log .ev.warn  { color: var(--warn); }
+    .sim .log .ev.info  { color: var(--muted); }
+
+    /* ─── Final combinations table ──────────────────────────── */
+    .combo-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin: 12px 0;
+    }
+    .combo-table th, .combo-table td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        vertical-align: top;
+    }
+    .combo-table th { background: var(--code-bg); }
+    .combo-table .ok { color: var(--success); font-weight: 600; }
+    .combo-table .no { color: var(--danger); font-weight: 600; }
+    .combo-table .alt { color: var(--warn); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+    <h1>OAuth 2.0 — Failure &amp; Recovery at Scale</h1>
+    <p>Each section walks through one traffic-driven failure mode, shows the failure topology, and lists recovery options side by side. Where multiple options exist, the combinability matrix is shown at the end of each section. A summary table at the bottom shows which solutions stack across the whole flow.</p>
+</header>
+
+<div class="layout">
+<nav class="toc panel">
+    <h3>Failures by step</h3>
+    <div class="step-label">Step 1</div>
+    <a href="#step1">AS overload at /authorize</a>
+    <div class="step-label">Step 3</div>
+    <a href="#step3">/callback overload</a>
+    <div class="step-label">Step 5</div>
+    <a href="#step5a">AS overload at /token</a>
+    <a href="#step5b">⚡ Lost response problem</a>
+    <div class="step-label">Post-flow</div>
+    <a href="#refresh">Refresh stampede</a>
+    <div class="step-label">Cross-cutting</div>
+    <a href="#combo">Combination matrix</a>
+</nav>
+
+<main>
+
+<!-- ─── STEP 1 ────────────────────────────────────────────────────── -->
+<section class="panel" id="step1">
+    <h2><span class="step-tag">Step 1</span>AS overload at <code>/authorize</code></h2>
+
+    <div class="failure-block">
+        <strong>Failure:</strong> client redirects user to the auth server's <code>/authorize</code> endpoint. AS is under load — returns HTTP 5xx, <code>error=server_error</code>, or just times out. User sees a broken auth screen or a spinning page.
+    </div>
+
+    <h3>Failure topology</h3>
+    <div class="topology">
+        <div class="node client">Client<small>browser</small></div>
+        <div class="arrow failed">
+            <span class="label">GET /authorize?…</span>
+            <span class="line">→</span>
+            <span class="sublabel">500 / timeout</span>
+        </div>
+        <div class="node as failed">Auth Server<small>overloaded</small></div>
+    </div>
+
+    <h3>Solutions</h3>
+    <div class="solution-grid">
+
+        <div class="solution-card">
+            <h4>1️⃣ Client backoff + retry <span class="tag client">client</span></h4>
+            <div class="desc">Client catches the failure, waits with jittered exponential backoff, retries 2–3 times before surfacing an error.</div>
+            <div class="timeline">
+                <span class="t">t=0</span><span class="ev">GET /authorize</span><span class="result fail">500</span>
+                <span class="t">+150ms</span><span class="ev">retry 1</span><span class="result fail">500</span>
+                <span class="t">+480ms</span><span class="ev">retry 2</span><span class="result fail">500</span>
+                <span class="t">+1.6s</span><span class="ev">retry 3</span><span class="result ok">200</span>
+            </div>
+            <div class="pros">✓ No server changes needed. ✓ Smooths transient blips invisibly.</div>
+            <div class="cons">✗ Without jitter, simultaneous clients dogpile on the AS once it recovers.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>2️⃣ Edge rate limiting <span class="tag infra">infra</span></h4>
+            <div class="desc">API gateway / Envoy in front of AS enforces per-client (or per-IP) rate limits. AS itself never sees overload traffic — gateway returns <code>429</code> first.</div>
+            <div class="topology" style="background:white">
+                <div class="node client">Client</div>
+                <div class="arrow"><span class="label">/authorize</span><span class="line">→</span></div>
+                <div class="node gateway">Gateway<small>rate limit</small></div>
+                <div class="arrow"><span class="label">passes</span><span class="line">→</span></div>
+                <div class="node as">AS</div>
+            </div>
+            <div class="pros">✓ Protects AS from abusive clients. ✓ Fast rejection (50ms 429) instead of slow 5xx.</div>
+            <div class="cons">✗ Doesn't help if a legit single client suddenly spikes (gateway throttles them).</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>3️⃣ Server-side load shedding <span class="tag server">server</span></h4>
+            <div class="desc">When AS detects it's at capacity (CPU > 80%, queue > N), it returns <code>503 Retry-After: 5</code> immediately rather than queuing requests until timeout.</div>
+            <div class="timeline">
+                <span class="t">t=0</span><span class="ev">/authorize → AS</span><span class="result fail">503 R-A:5</span>
+                <span class="t">+5s</span><span class="ev">client retries</span><span class="result ok">200</span>
+            </div>
+            <div class="pros">✓ AS recovers faster (sheds load before melting). ✓ Clients respect Retry-After if implemented.</div>
+            <div class="cons">✗ Requires AS to know its own capacity in real time.</div>
+        </div>
+    </div>
+
+    <div class="combine-note">
+        <strong>Combinable?</strong> All three stack. Different targets:<br>
+        <span style="color:var(--client)">Client backoff</span> = recover from any 5xx.<br>
+        <span style="color:#8a6500">Gateway rate limit</span> = stop abusive traffic at the edge.<br>
+        <span style="color:var(--server)">Server load shedding</span> = AS's last line of defense when even legit traffic exceeds capacity.<br>
+        Typical production setup uses all three simultaneously.
+    </div>
+</section>
+
+<!-- ─── STEP 3 ────────────────────────────────────────────────────── -->
+<section class="panel" id="step3">
+    <h2><span class="step-tag">Step 3</span>Your <code>/callback</code> page overloaded</h2>
+
+    <div class="failure-block">
+        <strong>Failure:</strong> User authenticated successfully. AS issued a code. Browser is redirected to <code>https://wallet.example.com/callback?code=…</code>. But <em>your</em> callback page returns 5xx — your web tier is overloaded. The code expires in 60 seconds. User stuck. <strong>This is the most brutal failure mode</strong> because there's no recovery from the client side: the code is dying in real time.
+    </div>
+
+    <h3>Failure topology</h3>
+    <div class="topology">
+        <div class="node as">AS</div>
+        <div class="arrow"><span class="label">302 /callback?code=…</span><span class="line">→</span></div>
+        <div class="node client">Browser</div>
+        <div class="arrow failed">
+            <span class="label">GET /callback</span>
+            <span class="line">→</span>
+            <span class="sublabel">5xx — your web tier</span>
+        </div>
+        <div class="node as failed" style="border-color:var(--client); color:var(--client); background:#ffe0e0">Your<br>/callback<small>overloaded</small></div>
+    </div>
+
+    <h3>Solutions</h3>
+    <div class="solution-grid">
+
+        <div class="solution-card">
+            <h4>1️⃣ Static <code>/callback</code> from CDN <span class="tag arch">architecture</span></h4>
+            <div class="desc">Make <code>/callback</code> a static HTML page served from CDN/edge. The page does the token exchange asynchronously via <code>fetch()</code> to a separate backend endpoint. The static page is virtually impossible to overload.</div>
+            <div class="topology" style="background:white">
+                <div class="node cdn">CDN<small>static</small></div>
+                <div class="arrow success"><span class="label">always 200</span><span class="line">→</span></div>
+                <div class="node client">Browser<small>JS runs</small></div>
+                <div class="arrow"><span class="label">fetch /api/token-exchange</span><span class="line">→</span></div>
+                <div class="node as">Token<br>API</div>
+            </div>
+            <div class="pros">✓ /callback can never overload. ✓ Decouples render from backend load.</div>
+            <div class="cons">✗ Token exchange API can still overload — but that hits step 5's playbook, which has more options.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>2️⃣ Highest-priority pool for <code>/callback</code> <span class="tag infra">infra</span></h4>
+            <div class="desc">Keep <code>/callback</code> on its own LB pool, separate from the rest of your web tier. Reserve capacity for it. Other endpoints can degrade first.</div>
+            <div class="pros">✓ Cheaper than splitting architecture. ✓ /callback isolated from non-OAuth load spikes.</div>
+            <div class="cons">✗ Still has finite capacity — a true spike (e.g. mass-onboarding event) can saturate.</div>
+        </div>
+    </div>
+
+    <div class="combine-note">
+        <strong>Combinable?</strong> Yes — use option 1 (static + async) as the primary architecture; option 2's isolated pool now applies to the token-exchange API, not the static page. Defense in depth.
+    </div>
+</section>
+
+<!-- ─── STEP 5a — AS overload at /token ──────────────────────────── -->
+<section class="panel" id="step5a">
+    <h2><span class="step-tag">Step 5</span>AS overload at <code>/token</code> (5xx / 429)</h2>
+
+    <div class="failure-block">
+        <strong>Failure:</strong> Client sends <code>POST /token</code> with code + verifier. AS responds with HTTP 503, 429, or times out. The code was <strong>not consumed</strong> — AS rejected before redemption logic ran.
+    </div>
+
+    <h3>Failure topology</h3>
+    <div class="topology">
+        <div class="node client">Client</div>
+        <div class="arrow failed">
+            <span class="label">POST /token</span>
+            <span class="line">→</span>
+            <span class="sublabel">503 / 429</span>
+        </div>
+        <div class="node as failed">AS<small>overloaded</small></div>
+    </div>
+
+    <h3>Solutions</h3>
+    <div class="solution-grid">
+
+        <div class="solution-card">
+            <h4>1️⃣ Client backoff + retry <span class="tag client">client</span></h4>
+            <div class="desc">Same shape as step 1. The code is still valid; same code + verifier can be retried.</div>
+            <div class="timeline">
+                <span class="t">t=0</span><span class="ev">POST /token</span><span class="result fail">429</span>
+                <span class="t">+200ms</span><span class="ev">retry 1</span><span class="result fail">429</span>
+                <span class="t">+600ms</span><span class="ev">retry 2</span><span class="result ok">200</span>
+            </div>
+            <div class="pros">✓ Code remains valid for the 60s window — usually enough.</div>
+            <div class="cons">✗ Must NOT retry on <code>invalid_grant</code> — that means the code is dead.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>2️⃣ Aggressive timeout (5s) <span class="tag client">client</span></h4>
+            <div class="desc">Don't wait 30s for a slow response. Abort at 5s and treat as ambiguous failure → restart entire flow.</div>
+            <div class="pros">✓ Fails fast. ✓ Prevents resource pile-up on client side.</div>
+            <div class="cons">✗ Aborts when AS would have succeeded at 6s. ✗ Restarting flow costs the user a re-consent.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>3️⃣ Honor <code>Retry-After</code> <span class="tag client">client</span></h4>
+            <div class="desc">If AS returns <code>Retry-After: N</code> header (with 429 or 503), wait exactly N seconds before next retry — don't dogpile.</div>
+            <div class="pros">✓ Coordinates with AS recovery. ✓ Spec-compliant.</div>
+            <div class="cons">✗ Most clients ignore this header — needs explicit handling.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>4️⃣ Circuit breaker <span class="tag client">client</span></h4>
+            <div class="desc">If <code>/token</code> fails N times in M seconds, stop sending requests for a cooldown period. Show "service unavailable" to incoming users.</div>
+            <div class="pros">✓ Prevents client-side dogpile on a degraded AS. ✓ Speeds AS recovery.</div>
+            <div class="cons">✗ Innocent users hit the breaker; need careful tuning.</div>
+        </div>
+    </div>
+
+    <div class="combine-note">
+        <strong>Combinable?</strong> All four stack. Usually layered as: per-attempt <em>timeout</em> + across-attempt <em>backoff with Retry-After</em> + global <em>circuit breaker</em>. Standard library combo (most HTTP retry libraries do all three).
+    </div>
+</section>
+
+<!-- ─── STEP 5b — Lost response (THE BIG ONE) ─────────────────────── -->
+<section class="panel" id="step5b">
+    <h2><span class="step-tag">Step 5</span>⚡ Lost response problem <span style="font-size:11px; color:var(--danger); font-weight:600; margin-left:8px;">most subtle</span></h2>
+
+    <div class="failure-block">
+        <strong>Failure:</strong> Client sends <code>POST /token</code>. AS receives it, redeems the code, mints tokens, starts writing the response — <strong>then</strong> the TCP connection dies (load balancer scaled out, network blip, AS instance restarted). Client never sees the response. Client retries with same code + verifier. AS rejects: <code>invalid_grant</code> (code already redeemed). Tokens were issued but lost forever.
+    </div>
+
+    <h3>Failure topology</h3>
+    <div class="topology">
+        <div class="node client">Client</div>
+        <div class="arrow"><span class="label">POST /token</span><span class="line">→</span></div>
+        <div class="node as">AS</div>
+        <div class="arrow failed"><span class="label">response</span><span class="line">↩</span><span class="sublabel">lost in transit</span></div>
+        <div class="node client failed">Client<small>retries</small></div>
+        <div class="arrow failed"><span class="label">retry POST /token</span><span class="line">→</span></div>
+        <div class="node as failed"><span style="text-decoration:line-through">code</span><br>used<small>invalid_grant</small></div>
+    </div>
+
+    <p><strong>Why traffic-driven?</strong> At low load, TCP connections are stable. At high load, LBs scale out, AS instances cycle, connection pools exhaust → mid-request connection failures spike. Becomes a measurable percentage of token exchanges.</p>
+
+    <h3>Solutions (four mutually-exclusive server patterns + one client-side defense)</h3>
+
+    <div class="solution-grid">
+
+        <div class="solution-card">
+            <h4>A. Client-side: ambiguous-failure detection <span class="tag client">client</span></h4>
+            <div class="desc">Distinguish "got a 5xx response" (safe to retry) from "request aborted with no response" (code may be consumed). On ambiguous failure, <strong>restart the flow from step 0</strong> — accept the lost code.</div>
+            <pre>try {
+  const res = await fetch('/token', {…, signal: timeout(5000)});
+  if (res.status >= 500) RETRY_SAFE;        // try again
+  if (res.status === 400 &amp;&amp; res.body.error === 'invalid_grant')
+                                  RESTART;  // code dead
+} catch (e) {
+  if (e.name === 'AbortError') RESTART;     // ambiguous → assume dead
+  if (e.name === 'NetworkError') RESTART;
+}</pre>
+            <div class="pros">✓ Pure client change. ✓ Works regardless of AS implementation.</div>
+            <div class="cons">✗ User has to re-consent. ✗ Slightly inflated re-auth rate.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>B. AS-side: distributed lock on code <span class="tag server">server</span></h4>
+            <div class="desc">First redemption acquires a Redis lock keyed by code (TTL 30s). Concurrent retry blocks on the lock, then re-reads the result from storage. The "lost response" client's retry now succeeds with the cached tokens.</div>
+            <div class="topology" style="background:white">
+                <div class="node as">AS-1<small>has lock</small></div>
+                <div class="arrow"><span class="label">writes tokens</span><span class="line">→</span></div>
+                <div class="node store">Redis<small>code → tokens</small></div>
+                <div class="arrow dashed"><span class="label">retry blocks</span><span class="line">↓</span></div>
+                <div class="node as">AS-2<small>waiting</small></div>
+            </div>
+            <div class="pros">✓ Transparent to client. ✓ User keeps their session.</div>
+            <div class="cons">✗ Adds Redis hot key per code. ✗ Lock TTL tuning matters.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>C. AS-side: idempotency window <span class="tag server">server</span></h4>
+            <div class="desc">When AS redeems a code, it stores <em>the response</em> alongside the consumed-marker for ~30s. On retry within that window, return the cached response instead of <code>invalid_grant</code>.</div>
+            <pre>// In AS code-redemption logic
+if (code.status === 'redeemed' &amp;&amp;
+    code.redeemed_at &gt; now() - 30s) {
+    return code.cached_response;   // ← idempotent
+}
+if (code.status === 'redeemed') {
+    return invalid_grant;          // window expired
+}
+// ...normal redemption...</pre>
+            <div class="pros">✓ No coordination needed (writes serialized by code-store). ✓ Simpler than option B.</div>
+            <div class="cons">✗ Storing response bytes inflates code-store size. ✗ Security gotcha: only return cached response to same <code>client_id</code> + <code>code_verifier</code>.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>D. Saga / event-sourced redemption <span class="tag server">server</span></h4>
+            <div class="desc">Treat redemption as an ordered sequence of events: <code>code.locked</code> → <code>tokens.minted</code> → <code>tokens.delivered</code>. On retry, AS replays from the last completed step. Heavy machinery; used in microservice estates where multiple downstream services participate.</div>
+            <div class="pros">✓ Survives multi-step failures, not just lost responses. ✓ Audit trail built in.</div>
+            <div class="cons">✗ Significant complexity. ✗ Most teams shouldn't reach for this first.</div>
+        </div>
+
+    </div>
+
+    <div class="combine-note">
+        <strong>Combinability matrix</strong> (lost-response options only):
+        <table>
+            <tr><th></th><th>A (client)</th><th>B (lock)</th><th>C (idempotency)</th><th>D (saga)</th></tr>
+            <tr><th>A (client)</th><td class="ok">—</td><td class="ok">✓ stack</td><td class="ok">✓ stack</td><td class="ok">✓ stack</td></tr>
+            <tr><th>B (lock)</th><td class="ok">✓</td><td class="ok">—</td><td class="alt">redundant</td><td class="alt">subsumed</td></tr>
+            <tr><th>C (idempotency)</th><td class="ok">✓</td><td class="alt">redundant</td><td class="ok">—</td><td class="alt">subsumed</td></tr>
+            <tr><th>D (saga)</th><td class="ok">✓</td><td class="alt">subsumed</td><td class="alt">subsumed</td><td class="ok">—</td></tr>
+        </table>
+        <p style="margin-top:10px"><strong>Recommended:</strong> <span style="color:var(--client)">A</span> (always — costs nothing) + <strong>one</strong> of <span style="color:var(--server)">B / C / D</span> depending on infrastructure. B and C are functionally similar; D is overkill unless you have cross-service redemption.</p>
+        <p>Picking B vs. C: B handles concurrent retries cleanly but adds a Redis lock per code. C is simpler but needs careful security around "who's allowed to read the cached response."</p>
+    </div>
+
+    <div class="sim">
+        <h4>🧪 Lost-response simulator</h4>
+        <p>Pick a defense strategy, then click "Run scenario" to see what happens to a single OAuth flow when the token response is lost.</p>
+        <div class="controls">
+            <button id="sim-none">No defense</button>
+            <button id="sim-a" class="secondary">A: client restart</button>
+            <button id="sim-b" class="secondary">B: AS distributed lock</button>
+            <button id="sim-c" class="secondary">C: AS idempotency window</button>
+            <button id="sim-ac" class="secondary">A + C combined</button>
+        </div>
+        <div class="log" id="sim-log">Click a scenario above to run a simulation.</div>
+    </div>
+</section>
+
+<!-- ─── Refresh stampede ─────────────────────────────────────────── -->
+<section class="panel" id="refresh">
+    <h2><span class="step-tag">post-flow</span>Refresh stampede (synchronized token expiry)</h2>
+
+    <div class="failure-block">
+        <strong>Failure:</strong> Morning login peak: 10,000 users sign in within a 5-minute window. One hour later, all 10,000 access tokens expire within the same 5-minute window. All clients try to refresh simultaneously. AS gets a synchronized 10,000-request spike at <code>/token</code> (refresh grant). Subset of refreshes fail → fall back to full reauth → spike at <code>/authorize</code> too.
+    </div>
+
+    <h3>Failure topology</h3>
+    <div class="topology">
+        <div class="node client" style="padding:6px 10px">10,000<br>clients</div>
+        <div class="arrow failed">
+            <span class="label">all refresh<br>at same minute</span>
+            <span class="line">→</span>
+        </div>
+        <div class="node as failed">AS<small>spike at /token</small></div>
+    </div>
+
+    <h3>Solutions</h3>
+    <div class="solution-grid">
+
+        <div class="solution-card">
+            <h4>1️⃣ Stagger token lifetimes <span class="tag server">server</span></h4>
+            <div class="desc">Instead of <code>expires_in: 3600</code> (exactly 60 min), use <code>3300 + random(0..600)</code> — 55–65 min. Same users now refresh spread over 10 min instead of clustered at 60 min.</div>
+            <div class="pros">✓ Smooths peak by ~10×. ✓ Trivial to implement (one line at token mint).</div>
+            <div class="cons">✗ Doesn't help if all users log in in the same minute (which can still synchronize).</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>2️⃣ Client-side stale-while-revalidate <span class="tag client">client</span></h4>
+            <div class="desc">Client doesn't proactively refresh on expiry. Only refreshes when an API call returns 401 (token rejected by resource server). Most users don't hit 401 at exactly t=60min — they hit it whenever they next make an API call, which is naturally spread out.</div>
+            <div class="pros">✓ Eliminates synchronized refresh entirely. ✓ Saves wasted refreshes for idle users.</div>
+            <div class="cons">✗ First API call after expiry pays a refresh+retry latency penalty.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>3️⃣ Server-side circuit breaker / load shedding <span class="tag server">server</span></h4>
+            <div class="desc">When <code>/token</code> hits capacity, AS returns <code>503 Retry-After: X</code> to refresh requests preferentially (over new-auth requests). Some users see brief delay; the AS doesn't collapse.</div>
+            <div class="pros">✓ AS survives genuine spikes. ✓ Prioritizes new logins (more user-visible) over refreshes.</div>
+            <div class="cons">✗ Requires client respect for Retry-After. ✗ Some API calls fail in the window.</div>
+        </div>
+
+        <div class="solution-card">
+            <h4>4️⃣ Longer token lifetime + revocation <span class="tag arch">architecture</span></h4>
+            <div class="desc">Make access tokens last hours (8h, 12h), reducing refresh frequency. Pair with a revocation list / introspection cache so compromised tokens can still be invalidated quickly.</div>
+            <div class="pros">✓ Drastically reduces refresh load. ✓ Better user experience (fewer "session expired" surprises).</div>
+            <div class="cons">✗ Longer-lived tokens = larger blast radius if stolen. ✗ Revocation complexity.</div>
+        </div>
+    </div>
+
+    <div class="combine-note">
+        <strong>Combinable?</strong> All four stack.<br>
+        Realistic production setup: <span style="color:var(--server)">stagger</span> + <span style="color:var(--client)">SWR</span> as defaults; <span style="color:var(--server)">circuit breaker</span> as safety net; <span style="color:var(--cdn)">longer lifetimes</span> as a scaling-cost optimization once the first two are in place. Each addresses a different failure mode — stacking gives compound mitigation.
+    </div>
+</section>
+
+<!-- ─── Cross-cutting combo matrix ───────────────────────────────── -->
+<section class="panel" id="combo">
+    <h2>Combination matrix — full flow</h2>
+    <p>Which solutions across the whole flow stack vs. conflict. The realistic production stack uses many of these at once.</p>
+
+    <table class="combo-table">
+        <thead>
+            <tr>
+                <th>Layer</th>
+                <th>Step 1 (/authorize)</th>
+                <th>Step 3 (/callback)</th>
+                <th>Step 5 normal (/token)</th>
+                <th>Step 5 lost response</th>
+                <th>Refresh stampede</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th>Client</th>
+                <td>backoff + jitter</td>
+                <td>—</td>
+                <td>backoff + timeout + circuit breaker</td>
+                <td>ambiguous-failure detection → restart</td>
+                <td>stale-while-revalidate</td>
+            </tr>
+            <tr>
+                <th>Edge / Gateway</th>
+                <td>per-client rate limit</td>
+                <td>static-page CDN</td>
+                <td>per-client rate limit</td>
+                <td>—</td>
+                <td>queueing + Retry-After</td>
+            </tr>
+            <tr>
+                <th>AS service</th>
+                <td>load shedding (503 + R-A)</td>
+                <td>—</td>
+                <td>load shedding</td>
+                <td><strong>pick ONE:</strong> distributed lock <span class="alt">OR</span> idempotency window <span class="alt">OR</span> saga</td>
+                <td>stagger lifetimes + load shedding</td>
+            </tr>
+            <tr>
+                <th>State store</th>
+                <td>sharded session store</td>
+                <td>—</td>
+                <td>sharded code store + redemption lock/cache</td>
+                <td>same</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <th>Architecture</th>
+                <td>—</td>
+                <td>static + async exchange</td>
+                <td>JWT vs. opaque tokens choice</td>
+                <td>—</td>
+                <td>long-lived tokens + revocation</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Read this matrix as:</h3>
+    <ul>
+        <li><strong>Each column</strong> = recovery stack for one failure mode. Multiple layers cooperate.</li>
+        <li><strong>Each row</strong> = where you'd implement that layer in your infrastructure.</li>
+        <li><strong>Step 5 lost response</strong> is the only column with <em>mutually-exclusive</em> AS-side options — pick one of B/C/D, don't stack them.</li>
+        <li><strong>Client-side defenses</strong> (top row) are always free to add — they don't conflict with anything.</li>
+    </ul>
+
+    <h3>Order of investment</h3>
+    <p>If you're starting from scratch and prioritizing, this is roughly the order to add things by cost-vs-benefit:</p>
+    <ol>
+        <li>Client backoff + timeout (covers ~80% of transient blips, almost free)</li>
+        <li>Static <code>/callback</code> page (covers the worst failure mode at low effort)</li>
+        <li>Edge rate limiting (protects AS from one bad client melting everyone)</li>
+        <li>Stagger token lifetimes (one-line change, big peak-smoothing effect)</li>
+        <li>Idempotency window OR distributed lock at AS (fixes the lost-response trap)</li>
+        <li>Server-side load shedding + circuit breakers</li>
+        <li>State-store sharding + scaling</li>
+        <li>Saga/event-sourced redemption (only if downstream complexity warrants)</li>
+    </ol>
+</section>
+
+</main>
+</div>
+</div>
+
+<script>
+// ─── Lost-response simulator ───────────────────────────────────────
+const log = document.getElementById('sim-log');
+
+function clearLog() { log.innerHTML = ''; }
+function ev(text, cls = 'info') {
+    const div = document.createElement('div');
+    div.className = 'ev ' + cls;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+async function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function scenarioNoDefense() {
+    clearLog();
+    ev('▶ Scenario: NO defense (naive client + naive AS)', 'info');
+    await delay(200);
+    ev('t=0    Client → POST /token  (code=abc, verifier=xyz)', 'info');
+    await delay(400);
+    ev('t=100  AS → redeems code, mints tokens, marks code consumed', 'info');
+    await delay(300);
+    ev('t=150  AS → starts sending 200 OK { access_token: … }', 'info');
+    await delay(300);
+    ev('t=160  💥 LB scale-out drops TCP connection mid-response', 'fail');
+    await delay(300);
+    ev('t=165  Client: response never arrived; sees network error', 'fail');
+    await delay(300);
+    ev('t=170  Client retries (naive) with SAME code', 'warn');
+    await delay(300);
+    ev('t=200  AS: code already consumed → 400 invalid_grant', 'fail');
+    await delay(300);
+    ev('t=210  Client gives up. User must reauth.', 'fail');
+    await delay(200);
+    ev('— Tokens were issued but never delivered. User experience: failure. —', 'fail');
+}
+
+async function scenarioA() {
+    clearLog();
+    ev('▶ Scenario: A — Client-side ambiguous-failure detection', 'info');
+    await delay(200);
+    ev('t=0    Client → POST /token (5s timeout)', 'info');
+    await delay(300);
+    ev('t=160  💥 connection drops; no response received', 'fail');
+    await delay(300);
+    ev('t=5000 Client: AbortError (timeout) → AMBIGUOUS', 'warn');
+    await delay(300);
+    ev('t=5001 Client decision: "code may be consumed; do not retry"', 'warn');
+    await delay(300);
+    ev('t=5002 Client RESTARTS flow from step 0 (fresh verifier, fresh state)', 'info');
+    await delay(300);
+    ev('t=5500 User reauthenticates → fresh code → new token exchange', 'ok');
+    await delay(200);
+    ev('— User completes auth, but had to re-consent. —', 'warn');
+}
+
+async function scenarioB() {
+    clearLog();
+    ev('▶ Scenario: B — AS distributed lock on code', 'info');
+    await delay(200);
+    ev('t=0    Client → POST /token (code=abc)', 'info');
+    await delay(300);
+    ev('t=10   AS-instance-1: SET lock:abc EX 30 NX → got lock', 'info');
+    await delay(300);
+    ev('t=100  AS-1: mints tokens, writes {code → response} to Redis', 'info');
+    await delay(300);
+    ev('t=160  💥 connection drops; client doesn\'t receive response', 'fail');
+    await delay(300);
+    ev('t=300  Client retries POST /token (same code)', 'info');
+    await delay(300);
+    ev('t=310  Goes to AS-instance-2 (load-balanced)', 'info');
+    await delay(300);
+    ev('t=320  AS-2: SET lock:abc — fails (still held by AS-1)', 'warn');
+    await delay(300);
+    ev('t=325  AS-2: waits ~50ms, retries → AS-1 lock now released', 'info');
+    await delay(300);
+    ev('t=380  AS-2: reads stored response for code=abc → returns to client', 'ok');
+    await delay(300);
+    ev('t=400  Client receives tokens — transparent recovery', 'ok');
+    await delay(200);
+    ev('— User never knew anything went wrong. —', 'ok');
+}
+
+async function scenarioC() {
+    clearLog();
+    ev('▶ Scenario: C — AS idempotency window', 'info');
+    await delay(200);
+    ev('t=0    Client → POST /token (code=abc, verifier=xyz)', 'info');
+    await delay(300);
+    ev('t=100  AS: redeems code; stores {code, response, redeemed_at: now()}', 'info');
+    await delay(300);
+    ev('t=160  💥 connection drops; client doesn\'t receive response', 'fail');
+    await delay(300);
+    ev('t=400  Client retries POST /token (same code, same verifier)', 'info');
+    await delay(300);
+    ev('t=410  AS: lookup code → status=redeemed, redeemed_at=100, age=300ms < 30s', 'info');
+    await delay(300);
+    ev('t=415  AS: verify verifier matches stored challenge → match ✓', 'info');
+    await delay(300);
+    ev('t=420  AS: return CACHED response { access_token: same as before }', 'ok');
+    await delay(300);
+    ev('t=440  Client receives tokens', 'ok');
+    await delay(200);
+    ev('— Transparent recovery. Simpler than locks. —', 'ok');
+}
+
+async function scenarioAC() {
+    clearLog();
+    ev('▶ Scenario: A + C combined (client detection + AS idempotency)', 'info');
+    await delay(200);
+    ev('t=0    Client → POST /token (5s timeout)', 'info');
+    await delay(300);
+    ev('t=100  AS: redeems code; stores response with 30s TTL', 'info');
+    await delay(300);
+    ev('t=160  💥 connection drops', 'fail');
+    await delay(300);
+    ev('t=500  Client: network error (fast detection, not 5s timeout)', 'warn');
+    await delay(300);
+    ev('t=501  Client SAFE-RETRIES once with same code (trying for transparent recovery)', 'info');
+    await delay(300);
+    ev('t=550  AS: code already redeemed, within idempotency window → returns cached', 'ok');
+    await delay(300);
+    ev('t=580  Client receives tokens — transparent recovery, no restart needed', 'ok');
+    await delay(200);
+    ev('— Best of both worlds: idempotency makes the retry transparent; if the AS retry also fails (e.g., 30s elapsed, window expired), the client falls back to flow restart. —', 'ok');
+}
+
+document.getElementById('sim-none').onclick = scenarioNoDefense;
+document.getElementById('sim-a').onclick = scenarioA;
+document.getElementById('sim-b').onclick = scenarioB;
+document.getElementById('sim-c').onclick = scenarioC;
+document.getElementById('sim-ac').onclick = scenarioAC;
+</script>
+
+</body>
+</html>
