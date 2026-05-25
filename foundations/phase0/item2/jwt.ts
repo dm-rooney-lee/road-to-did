@@ -1,7 +1,7 @@
 /**
  * 02 — JWT Family
  *
- * READ FIRST  ./jwt.notes.md
+ * READ FIRST  ./jwt.notes.html  (interactive concepts + JWS builder + alg:none sim)
  * IMPLEMENT   One function per section. Fill in each body.
  * VERIFY      npm test
  */
@@ -41,31 +41,27 @@ export function encodeJwsCompact(
     encodedSignature: string;
     token: string;
 } {
-    const headerJsonString = JSON.stringify(header);
-    const encodedHeader = Buffer.from(headerJsonString).toString('base64url');
-
-    const payloadJsonString = JSON.stringify(payload);
-    const encodedPayload = Buffer.from(payloadJsonString).toString('base64url');
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
 
     // signing input is the ASCII string base64url(header) + "." + base64url(payload)
     const signingInput = `${encodedHeader}.${encodedPayload}`;
 
-    // JWS requires raw R∥S concatenation
-    const signature = sign('sha256', Buffer.from(signingInput), {
-        dsaEncoding: 'ieee-p1363',
+    // JWS requires raw R∥S concatenation, not Node's default DER
+    const signatureBytes = sign('sha256', Buffer.from(signingInput), {
         key: privateKey,
+        dsaEncoding: 'ieee-p1363',
     });
-    const encodedSignature = signature.toString('base64url');
-
+    const encodedSignature = signatureBytes.toString('base64url');
     const token = `${signingInput}.${encodedSignature}`;
 
     return {
-        encodedHeader: encodedHeader,
-        encodedPayload: encodedPayload,
-        signatureBytes: signature,
-        encodedSignature: encodedSignature,
-        token: token,
-    }
+        encodedHeader,
+        encodedPayload,
+        signatureBytes,
+        encodedSignature,
+        token,
+    };
 }
 
 // ============================================================
@@ -101,48 +97,27 @@ export function verifyJwsCompact(
     header: { alg: string; typ?: string; [k: string]: unknown };
     payload: Record<string, unknown>;
 } {
-    // 2-a
-    const tokenChunks = token.split('.');
-    const encodedHeader = tokenChunks[0];
-    const encodedPayload = tokenChunks[1];
-    const encodedSignature = tokenChunks[2];
+    const [encodedHeader, encodedPayload, encodedSignature] = token.split('.');
 
-    // decode header and payload
-    const decodedHeader = Buffer.from(encodedHeader, 'base64url').toString();
-    const header = JSON.parse(decodedHeader);
-    const decodedPayload = Buffer.from(encodedPayload, 'base64url').toString('utf8');
-    const payload = JSON.parse(decodedPayload);
+    // decode header and payload (returned to the caller regardless of validity)
+    const header = JSON.parse(Buffer.from(encodedHeader, 'base64url').toString());
+    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString());
 
-    // verify header's alg matches expectedAlg
-    const isAlgorithmAsExpected = header.alg === expectedAlg;
-    const responseWhenInvalid = {
-        valid: false,
-        header: header,
-        payload: payload,
-    };
-    if (!isAlgorithmAsExpected) {
-        return responseWhenInvalid
+    // alg check is a precondition: rejected before any crypto runs
+    if (header.alg !== expectedAlg) {
+        return {valid: false, header, payload};
     }
 
-    // verify signature
+    // signature check: bind verification result directly to `valid`
     const signingInput = `${encodedHeader}.${encodedPayload}`;
-    const message = Buffer.from(signingInput);
-    const signature = Buffer.from(encodedSignature, 'base64url');
-    const isTokenValid = verify(
+    const valid = verify(
         'sha256',
-        message,
-        { dsaEncoding: 'ieee-p1363', key: publicKey},
-        signature,
+        Buffer.from(signingInput),
+        {key: publicKey, dsaEncoding: 'ieee-p1363'},
+        Buffer.from(encodedSignature, 'base64url'),
     );
-    if (!isTokenValid) {
-        return responseWhenInvalid
-    }
 
-    return {
-        valid: true,
-        header: header,
-        payload: payload,
-    }
+    return {valid, header, payload};
 }
 
 // ============================================================
@@ -165,22 +140,19 @@ export function exportPublicJwk(publicKey: KeyObject): {
     x: string;
     y: string;
 } {
-    const {kty, crv, x, y} = publicKey.export({format: 'jwk'});
-    if (kty !== 'EC' || crv !== 'P-256' || !x || !y) {
+    const jwk = publicKey.export({format: 'jwk'});
+    if (jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.x || !jwk.y) {
         throw new Error(
-            `exportPublicJwk: publicKey is not an EC P-256 public key
-            kty: ${kty}
-            crv: ${crv}
-            `
+            `exportPublicJwk: expected an EC P-256 public key (got kty=${jwk.kty}, crv=${jwk.crv})`,
         );
     }
-
+    // TypeScript narrows jwk.x and jwk.y to `string` here — no `!` needed.
     return {
         kty: 'EC',
         crv: 'P-256',
-        x: x!,
-        y: y!,
-    }
+        x: jwk.x,
+        y: jwk.y,
+    };
 }
 
 // ============================================================

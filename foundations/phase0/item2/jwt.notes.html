@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>02 — JWT Family</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --client: #1e6fff;
+        --server: #c8332b;
+        --secret: #b8860b;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.55 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 6px 0;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+
+    .page-nav {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+
+    .bg-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin: 4px 0 14px;
+        flex-wrap: wrap;
+    }
+    .bg-tab-button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        color: var(--muted);
+        position: relative;
+        top: 1px;
+    }
+    .bg-tab-button.active {
+        color: var(--ink);
+        border-color: var(--border);
+        border-bottom-color: var(--panel);
+        background: var(--panel);
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+    }
+    .bg-tab-content { display: none; }
+    .bg-tab-content.active { display: block; }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .concept-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .concept-card h4 { margin: 0 0 4px; }
+    .concept-card .tagline {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+    .concept-card .body { font-size: 12px; line-height: 1.5; }
+    .concept-card.danger { border-left: 3px solid var(--danger); background: #fbe9e7; }
+    .concept-card.warn { border-left: 3px solid var(--warn); background: #fff9e6; }
+    .concept-card.public { border-left: 3px solid var(--success); }
+
+    /* JWS segment visualization */
+    .jws-vis {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin: 12px 0;
+        font: 12px/1.4 ui-monospace, monospace;
+        flex-wrap: wrap;
+    }
+    .jws-seg {
+        padding: 8px 10px;
+        border-radius: 4px;
+        word-break: break-all;
+        flex: 1;
+        min-width: 120px;
+        text-align: center;
+    }
+    .jws-seg.header  { background: #e7f0ff; color: var(--client); border: 1px solid #b4cdff; }
+    .jws-seg.payload { background: #fff4d0; color: #8a6500; border: 1px solid #e8c662; }
+    .jws-seg.sig     { background: #fbe9e7; color: var(--server); border: 1px solid #f5c2bf; }
+    .jws-dot {
+        font-size: 18px;
+        color: var(--muted);
+        font-weight: bold;
+    }
+    .jws-seg .label {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        font-family: -apple-system, sans-serif;
+        opacity: 0.7;
+        margin-bottom: 2px;
+    }
+
+    table.alg-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 13px;
+    }
+    .alg-table th, .alg-table td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .alg-table th { background: var(--code-bg); font-weight: 600; }
+    .alg-table .highlight-row { background: #fff9e6; }
+    .alg-table code { font-size: 11px; }
+
+    /* Interactive JWT builder */
+    .builder-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 12px 0;
+    }
+    @media (max-width: 760px) {
+        .builder-grid { grid-template-columns: 1fr; }
+    }
+    .builder-field label {
+        font-size: 12px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 4px;
+    }
+    .builder-field textarea {
+        width: 100%;
+        font: 12px/1.5 ui-monospace, monospace;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: white;
+        min-height: 90px;
+        resize: vertical;
+    }
+    .builder-buttons {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0;
+        flex-wrap: wrap;
+    }
+    .builder-buttons button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--code-bg);
+        color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 120ms, color 120ms, border-color 120ms;
+    }
+    .builder-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .builder-buttons button.done {
+        background: var(--ink);
+        color: white;
+        border-color: var(--ink);
+    }
+    .builder-buttons button.secondary { background: var(--panel); color: var(--ink); border: 1px solid var(--border); }
+
+    .build-step {
+        background: var(--code-bg);
+        padding: 10px 14px;
+        border-radius: 4px;
+        font: 11px/1.5 ui-monospace, monospace;
+        margin: 8px 0;
+        word-break: break-all;
+    }
+    .build-step strong {
+        display: block;
+        font-family: -apple-system, sans-serif;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .demo-result {
+        padding: 10px 14px;
+        border-radius: 4px;
+        margin: 10px 0;
+        font-size: 13px;
+    }
+    .demo-result.ok { background: #e0f1e5; border-left: 3px solid var(--success); color: var(--success); }
+    .demo-result.fail { background: #fbe9e7; border-left: 3px solid var(--danger); color: var(--danger); }
+    .demo-result.info { background: var(--code-bg); border-left: 3px solid var(--muted); color: var(--ink); }
+
+    /* Attack sim */
+    .attack-section {
+        background: white;
+    }
+    .attack-section button.attack {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 4px 4px 4px 0;
+    }
+    .attack-section button.legit {
+        background: var(--success);
+    }
+
+    /* Quiz cards */
+    .quiz-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .quiz-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .quiz-card .question { font-weight: 600; margin: 0 0 10px; font-size: 13px; }
+    .reveal-btn {
+        padding: 5px 12px;
+        font: 11px/1 -apple-system, sans-serif;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .reveal-btn:hover { background: var(--code-bg); color: var(--ink); }
+    .quiz-card .answer {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff4d0;
+        border-left: 3px solid var(--warn);
+        border-radius: 0 4px 4px 0;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .quiz-card .answer.hidden { display: none; }
+
+    /* References */
+    .ref-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .ref-card {
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        text-decoration: none;
+        color: var(--ink);
+        transition: transform 100ms;
+    }
+    .ref-card:hover { transform: translateY(-2px); border-color: var(--client); }
+    .ref-card strong { display: block; color: var(--client); font-size: 13px; }
+    .ref-card .ref-title { font-size: 13px; margin: 2px 0; font-weight: 500; }
+    .ref-card small { color: var(--muted); font-size: 11px; display: block; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+    <h1>02 — JWT Family (JWT · JWS · JWE · JWA · JWK)</h1>
+    <p>The five alphabet-soup specs that make up the JOSE family, with an interactive JWS builder using real Web Crypto in your browser.</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#background">Background</a>
+    <a href="#builder">JWS builder</a>
+    <a href="#attack">alg:none attack</a>
+    <a href="#references">Self-check &amp; refs</a>
+</nav>
+
+<!-- ─── Background ─────────────────────────────────────────────── -->
+<section class="panel" id="background">
+    <h2>Background — read first</h2>
+    <p>Four things to understand: the family of specs, the compact JWS structure, the algorithm registry, and the key serialization format.</p>
+
+    <div class="bg-tabs">
+        <button class="bg-tab-button active" data-bg="family">JWT family</button>
+        <button class="bg-tab-button" data-bg="jws">Compact JWS</button>
+        <button class="bg-tab-button" data-bg="alg">Algorithms (JWA)</button>
+        <button class="bg-tab-button" data-bg="jwk">JWK — keys as JSON</button>
+    </div>
+
+    <!-- Tab: family -->
+    <div class="bg-tab-content active" id="bg-family">
+        <p>Five related specs from the IETF JOSE working group, all published in 2015 (RFC 7515–7519). They form a family — most JWTs you'll meet use JWS + JWA + JWK; JWE is rare in identity work.</p>
+
+        <table class="alg-table">
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Spec</th>
+                    <th>What it is</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="highlight-row">
+                    <td><strong>JWT</strong></td>
+                    <td>RFC 7519</td>
+                    <td>A JSON claims set packaged inside either a JWS or a JWE. The "outer" concept everyone talks about.</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><strong>JWS</strong></td>
+                    <td>RFC 7515</td>
+                    <td>Signed payload. Three parts: <code>header.payload.signature</code>. <em>Almost every JWT you'll meet in VC/DID work is a JWS.</em></td>
+                </tr>
+                <tr>
+                    <td>JWE</td>
+                    <td>RFC 7516</td>
+                    <td>Encrypted payload. Five parts. Rare in identity protocols.</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><strong>JWA</strong></td>
+                    <td>RFC 7518</td>
+                    <td>Algorithm registry. Maps short names → crypto primitives: <code>ES256</code>, <code>RS256</code>, <code>EdDSA</code>, <code>HS256</code>, …</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><strong>JWK</strong></td>
+                    <td>RFC 7517</td>
+                    <td>JSON serialization of a key (public or private).</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top:14px"><strong>In conversation:</strong> "JWT" is shorthand for "compact JWS containing a JSON claims set." Strictly, the JWT is the <em>claims</em>; the JWS is the <em>envelope</em>. Don't get hung up on it — but know that "verifying a JWT" really means "verifying the JWS that wraps it."</p>
+
+        <div class="concept-card warn" style="margin-top:14px">
+            <h4>Where you'll meet each in DID/VC</h4>
+            <div class="body">
+                <ul style="margin:4px 0 0; padding-left:18px">
+                    <li><strong>JWS</strong> — every VC-JWT, every SD-JWT, every OpenID4VC token. <em>Constant exposure.</em></li>
+                    <li><strong>JWK</strong> — published at <code>/.well-known/jwks.json</code>, embedded in <code>did:jwk</code> identifiers, inside <code>did:web</code> DID documents. <em>Constant exposure.</em></li>
+                    <li><strong>JWA</strong> — every <code>alg</code> value (<code>ES256</code>, <code>EdDSA</code>) you ever type. <em>Implicit, but everywhere.</em></li>
+                    <li><strong>JWT</strong> — the term in casual conversation; usually means JWS-with-JSON.</li>
+                    <li><strong>JWE</strong> — almost never. Credential confidentiality is handled by TLS + selective disclosure, not by encrypting the credential itself.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: compact JWS -->
+    <div class="bg-tab-content" id="bg-jws">
+        <h3>The compact serialization</h3>
+        <p>Three URL-safe segments joined by literal dots:</p>
+
+        <div class="jws-vis">
+            <div class="jws-seg header">
+                <span class="label">header</span>
+                base64url(JSON)
+            </div>
+            <div class="jws-dot">.</div>
+            <div class="jws-seg payload">
+                <span class="label">payload</span>
+                base64url(JSON)
+            </div>
+            <div class="jws-dot">.</div>
+            <div class="jws-seg sig">
+                <span class="label">signature</span>
+                base64url(bytes)
+            </div>
+        </div>
+
+        <h3>What's actually signed</h3>
+        <p>The <strong>signing input</strong> is the ASCII string <code>base64url(header) + "." + base64url(payload)</code> — exactly that, including the literal dot, before the third segment exists. The signature is over those bytes, NOT over the raw JSON.</p>
+
+        <p>Why sign the encoded form? JSON has ambiguity: whitespace, key order, number formatting. Different JSON serializers produce different bytes. By signing the base64url-of-JSON, both parties agree on exact bytes without arguing about whitespace.</p>
+
+        <h3>base64url</h3>
+        <p>Standard base64 uses <code>+</code>, <code>/</code>, and <code>=</code> padding. None of those are URL-safe (<code>+</code> becomes space in query strings, <code>/</code> is a path separator, <code>=</code> is reserved). <strong>base64url</strong> swaps the alphabet (<code>+ → -</code>, <code>/ → _</code>) and drops <code>=</code> padding. Node has it built in: <code>buf.toString('base64url')</code> and <code>Buffer.from(s, 'base64url')</code>.</p>
+
+        <h3>Standard claims (RFC 7519 §4.1)</h3>
+        <p>All three-letter, lowercase. All optional — pick what your protocol needs.</p>
+        <table class="alg-table">
+            <thead>
+                <tr><th>Claim</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>iss</code></td><td>issuer</td></tr>
+                <tr><td><code>sub</code></td><td>subject (who the token is <em>about</em>)</td></tr>
+                <tr><td><code>aud</code></td><td>audience (who it's <em>for</em>)</td></tr>
+                <tr class="highlight-row"><td><code>exp</code></td><td>expiry — <strong>Unix seconds, NOT milliseconds.</strong></td></tr>
+                <tr><td><code>nbf</code></td><td>not before</td></tr>
+                <tr><td><code>iat</code></td><td>issued at</td></tr>
+                <tr><td><code>jti</code></td><td>JWT ID (unique nonce)</td></tr>
+            </tbody>
+        </table>
+        <div class="concept-card danger" style="margin-top:8px">
+            <h4>⚠️ <code>exp</code> is seconds, not milliseconds</h4>
+            <div class="body">A classic bug: losing the <code>/ 1000</code> divisor when converting from <code>Date.now()</code> leaves tokens valid for thousands of years. Always double-check the units.</div>
+        </div>
+    </div>
+
+    <!-- Tab: JWA -->
+    <div class="bg-tab-content" id="bg-alg">
+        <h3>Algorithm registry (JWA)</h3>
+        <p>Each <code>alg</code> value in a JWS header is a short name from this registry. JWA itself is just the table — it doesn't define new crypto.</p>
+
+        <table class="alg-table">
+            <thead>
+                <tr><th>Name</th><th>Crypto</th><th>Where</th></tr>
+            </thead>
+            <tbody>
+                <tr class="highlight-row">
+                    <td><code>ES256</code></td>
+                    <td>ECDSA P-256 + SHA-256</td>
+                    <td><strong>JWT/VC default.</strong> The algorithm you built in Item 01.</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><code>EdDSA</code></td>
+                    <td>Ed25519</td>
+                    <td>Modern OpenID4VC, <code>did:key</code>, newer profiles.</td>
+                </tr>
+                <tr>
+                    <td><code>RS256</code></td>
+                    <td>RSA-2048+ + SHA-256</td>
+                    <td>Legacy OIDC (Google OAuth, Auth0 defaults).</td>
+                </tr>
+                <tr>
+                    <td><code>HS256</code></td>
+                    <td>HMAC-SHA256 (symmetric)</td>
+                    <td>Session tokens with a shared secret. <strong>Never</strong> for VC.</td>
+                </tr>
+                <tr style="background:#fbe9e7">
+                    <td><code>none</code></td>
+                    <td>no signature</td>
+                    <td>Attack vector — see the simulator below.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>ECDSA signature format — DER vs JOSE raw</h3>
+        <p>This one bites everybody once.</p>
+        <ul style="font-size:13px">
+            <li>Node's default <code>crypto.sign('sha256', msg, ecKey)</code> returns a <strong>DER-encoded</strong> ECDSA signature: 70–72 bytes of ASN.1 with length prefixes.</li>
+            <li>JWS requires raw <code>R∥S</code> concatenation (RFC 7518 §3.4): for P-256, exactly <strong>64 bytes</strong>.</li>
+        </ul>
+        <p>To switch Node into JOSE form, pass <code>dsaEncoding: 'ieee-p1363'</code> to <code>sign</code>/<code>verify</code>. Forget it and your token will <em>look</em> fine in jwt.io but real verifiers (browsers, other-language libraries) will reject the signature with no obvious clue why.</p>
+    </div>
+
+    <!-- Tab: JWK -->
+    <div class="bg-tab-content" id="bg-jwk">
+        <h3>JSON Web Key — keys as JSON</h3>
+        <p>A serialization format for keys (public or private). The same P-256 key from Item 01, written as JSON:</p>
+
+        <pre>{
+  "kty": "EC",
+  "crv": "P-256",
+  "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+  "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+}</pre>
+
+        <div class="card-grid">
+            <div class="concept-card">
+                <h4><code>kty</code></h4>
+                <div class="tagline">Key type</div>
+                <div class="body"><code>EC</code> (elliptic curve), <code>RSA</code>, or <code>OKP</code> (octet key pair — used for Ed25519).</div>
+            </div>
+            <div class="concept-card">
+                <h4><code>crv</code></h4>
+                <div class="tagline">Curve name (EC/OKP only)</div>
+                <div class="body"><code>P-256</code>, <code>P-384</code>, <code>Ed25519</code>, etc.</div>
+            </div>
+            <div class="concept-card">
+                <h4><code>x</code>, <code>y</code></h4>
+                <div class="tagline">Curve point coordinates</div>
+                <div class="body">base64url-encoded big-endian bytes. For P-256, each is 32 bytes → 43 base64url characters.</div>
+            </div>
+            <div class="concept-card warn">
+                <h4><code>d</code></h4>
+                <div class="tagline">Private key — for private JWKs only</div>
+                <div class="body">Also base64url. <strong>If you see <code>d</code> in a public JWK, you've leaked a private key.</strong></div>
+            </div>
+        </div>
+
+        <h3>JWK Set (JWKS)</h3>
+        <p>A bundle of multiple keys, conventionally published at <code>/.well-known/jwks.json</code>:</p>
+        <pre>{
+  "keys": [
+    { "kid": "key-2024", "kty": "EC", "crv": "P-256", "x": "…", "y": "…" },
+    { "kid": "key-2025", "kty": "EC", "crv": "P-256", "x": "…", "y": "…" }
+  ]
+}</pre>
+        <p>Verifiers fetch the issuer's JWKS, pick the right key by <code>kid</code> (key ID, usually copied from the JWT header), and verify.</p>
+    </div>
+</section>
+
+<!-- ─── Interactive JWS builder ────────────────────────────────── -->
+<section class="panel" id="builder">
+    <h2>🔬 JWS builder — interactive</h2>
+    <p>Edit the header &amp; payload, click "Build &amp; sign", and watch each segment form. Real ECDSA P-256 + SHA-256, real base64url, real signature bytes.</p>
+
+    <div class="builder-grid">
+        <div class="builder-field">
+            <label for="header-input">Header (JSON)</label>
+            <textarea id="header-input">{
+  "alg": "ES256",
+  "typ": "JWT"
+}</textarea>
+        </div>
+        <div class="builder-field">
+            <label for="payload-input">Payload (JSON claims)</label>
+            <textarea id="payload-input">{
+  "iss": "did:example:issuer",
+  "sub": "did:example:subject",
+  "iat": 1700000000,
+  "exp": 1700003600
+}</textarea>
+        </div>
+    </div>
+
+    <div class="builder-buttons">
+        <button id="build-btn">Build &amp; sign</button>
+        <button id="verify-btn" disabled>Verify token</button>
+        <button id="builder-reset" class="secondary">Reset</button>
+    </div>
+
+    <div id="build-output"></div>
+</section>
+
+<!-- ─── alg:none attack simulator ──────────────────────────────── -->
+<section class="panel attack-section" id="attack">
+    <h2>🦹 The <code>alg: none</code> attack</h2>
+    <p>In 2015 several mainstream JWT libraries were found to trust the <code>alg</code> field in the (attacker-controlled) header and dispatch accordingly:</p>
+    <ul style="font-size:13px; margin-top:6px">
+        <li><code>alg: 'ES256'</code> → run ECDSA verify</li>
+        <li><code>alg: 'none'</code> → return <code>true</code>, skip verification entirely</li>
+    </ul>
+    <p>An attacker crafted <code>{"alg":"none"}</code> with an empty signature, the library returned "valid", and the payload was trusted. The fix is a single discipline: <strong>the verifier knows what algorithm it expects.</strong> Reject anything else.</p>
+
+    <p style="margin-top:12px">Try it below. The "attacker forges" button crafts an <code>alg:none</code> token. The "naïve verifier" trusts <code>header.alg</code> to dispatch. The "strict verifier" enforces an expected <code>alg</code> regardless of what the header claims.</p>
+
+    <div style="margin-top:14px">
+        <button id="forge-btn" class="attack">Attacker forges alg:none token</button>
+        <button id="verify-naive-btn" class="attack">Try naïve verifier (trust header.alg)</button>
+        <button id="verify-strict-btn" class="legit">Try strict verifier (enforce ES256)</button>
+    </div>
+
+    <div id="attack-output"></div>
+</section>
+
+<!-- ─── Self-check + refs ─────────────────────────────────────── -->
+<section class="panel" id="references">
+    <h2>Self-check &amp; further reading</h2>
+
+    <h3>Self-check</h3>
+    <p style="color:var(--muted); font-size:12px; margin-top:0">Try to answer before clicking "Show answer".</p>
+    <div class="quiz-grid">
+        <div class="quiz-card">
+            <p class="question">A "JWT" is technically two things stacked. What wraps what?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                The <strong>JWT</strong> is the JSON claims set (the payload). It's wrapped in a <strong>JWS</strong> (signed envelope) — or much more rarely a JWE (encrypted envelope). "JWT" in casual usage = "JWS containing a JSON claims set."
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">Why does the verifier compute the signature over <code>base64url(header) + "." + base64url(payload)</code> instead of over the raw JSON?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                Because JSON has ambiguity — whitespace, key order, number formatting — and different serializers produce different bytes for "the same" object. Signing the base64url-of-JSON guarantees both parties agree on the exact byte sequence to verify against. The encoded form is canonical; the JSON form isn't.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">What attack does <code>{"alg": "none"}</code> enable, and what one rule kills it?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                The attack: an attacker sends a token with <code>alg:none</code> and an empty signature. A naïve verifier that uses <code>header.alg</code> to <em>dispatch</em> the verification function will pick the no-op verifier and return "valid". The one rule that kills it: <strong>the verifier enforces an expected algorithm, regardless of what the header claims.</strong> Use <code>header.alg</code> only to <em>match</em> against your expectation, never to <em>select</em> the verifier.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">What does <code>exp: 1758000000</code> mean — and what bug do you create if you confuse it with milliseconds?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                <code>exp</code> is in <strong>Unix seconds</strong>. 1,758,000,000 seconds since 1970 = around late 2025. If you accidentally treat it as milliseconds, the same value lands in the year 57735 — your token effectively never expires. Always use <code>Math.floor(Date.now() / 1000)</code>, not <code>Date.now()</code>.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">Given a JWK with <code>kty: "EC"</code>, <code>crv: "P-256"</code>, <code>x</code>, <code>y</code> — how does that JSON correspond to the public key bytes of an ECDSA P-256 keypair you generated in Item 01?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                The keypair has a public point <code>(x, y)</code> on the P-256 curve. Each coordinate is a 32-byte big-endian integer (because P-256 is a 256-bit curve). The JWK stores those bytes base64url-encoded — so <code>x</code> and <code>y</code> are each 43 characters long. Decode them and you get back the raw 32-byte coordinates that, together, define the public point.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">Two JWTs signed with the same ES256 key over the same payload — will their signature segments be byte-equal? Why or why not?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                <strong>No.</strong> ECDSA requires a fresh random nonce <code>k</code> for every signature. The signature embeds <code>k</code>, so different runs produce different signatures even for identical inputs. (Compare with EdDSA, which derives <code>k</code> deterministically and produces byte-identical signatures for identical inputs.) See Item 01's Lesson 1.
+            </div>
+        </div>
+        <div class="quiz-card">
+            <p class="question">If you signed a JWT with Node's default <code>sign('sha256', ..., key)</code> and a browser verifier rejected it, what's the most likely cause?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">
+                <strong>DER vs JOSE format.</strong> Node's default is DER-encoded ECDSA signatures (70–72 bytes of ASN.1). JWS requires raw <code>R∥S</code> concatenation (64 bytes for P-256). Pass <code>dsaEncoding: 'ieee-p1363'</code> to <code>sign</code> to get the JOSE format. Symptom is exactly this: token looks fine in jwt.io, fails in real verifiers.
+            </div>
+        </div>
+    </div>
+
+    <h3 style="margin-top:24px">Further reading</h3>
+    <div class="ref-grid">
+        <a href="https://datatracker.ietf.org/doc/html/rfc7519" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 7519</strong>
+            <div class="ref-title">JSON Web Token</div>
+            <small>The JWT spec. ~25 pages, readable.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc7515" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 7515</strong>
+            <div class="ref-title">JSON Web Signature</div>
+            <small>The envelope spec — what's actually being signed.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc7518#section-3.4" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 7518 §3.4</strong>
+            <div class="ref-title">ECDSA in JWA</div>
+            <small>The raw R∥S encoding rule. Bookmark this for DER-vs-JOSE confusion.</small>
+        </a>
+        <a href="https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/" target="_blank" rel="noopener" class="ref-card">
+            <strong>Auth0 (2015)</strong>
+            <div class="ref-title">Critical vulnerabilities in JWT libraries</div>
+            <small>The original alg:none / algorithm-confusion disclosure.</small>
+        </a>
+        <a href="https://jwt.io/" target="_blank" rel="noopener" class="ref-card">
+            <strong>jwt.io</strong>
+            <div class="ref-title">Paste-a-token decoder</div>
+            <small>Useful for inspection. Note: does NOT validate <code>alg</code>; trust nothing it says about validity.</small>
+        </a>
+    </div>
+</section>
+
+</div>
+
+<script>
+// ─── Crypto helpers (real Web Crypto) ──────────────────────────
+
+function strToBase64Url(str) {
+    return btoa(unescape(encodeURIComponent(str)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function bytesToBase64Url(buf) {
+    let bin = '';
+    for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function base64UrlToStr(s) {
+    s = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    return decodeURIComponent(escape(atob(s)));
+}
+async function genEcdsaP256Keypair() {
+    return crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'],
+    );
+}
+async function signEs256(privateKey, signingInput) {
+    const data = new TextEncoder().encode(signingInput);
+    const sig = await crypto.subtle.sign(
+        { name: 'ECDSA', hash: 'SHA-256' }, privateKey, data,
+    );
+    return new Uint8Array(sig);
+}
+async function verifyEs256(publicKey, signingInput, sigBytes) {
+    const data = new TextEncoder().encode(signingInput);
+    return crypto.subtle.verify(
+        { name: 'ECDSA', hash: 'SHA-256' }, publicKey, sigBytes, data,
+    );
+}
+
+// ─── Background tab switching ──────────────────────────────────
+
+document.querySelectorAll('.bg-tab-button').forEach(b => {
+    b.onclick = () => {
+        const name = b.dataset.bg;
+        document.querySelectorAll('.bg-tab-button').forEach(x =>
+            x.classList.toggle('active', x.dataset.bg === name));
+        document.querySelectorAll('.bg-tab-content').forEach(c =>
+            c.classList.toggle('active', c.id === 'bg-' + name));
+    };
+});
+
+// ─── Quiz reveal ───────────────────────────────────────────────
+
+document.querySelectorAll('.reveal-btn').forEach(b => {
+    b.onclick = () => {
+        const card = b.closest('.quiz-card');
+        const answer = card.querySelector('.answer');
+        answer.classList.toggle('hidden');
+        b.textContent = answer.classList.contains('hidden') ? 'Show answer' : 'Hide answer';
+    };
+});
+
+// ─── JWS builder ───────────────────────────────────────────────
+
+const BUILDER = {
+    keypair: null,
+    token: null,
+};
+
+document.getElementById('build-btn').onclick = async () => {
+    let header, payload;
+    try {
+        header = JSON.parse(document.getElementById('header-input').value);
+        payload = JSON.parse(document.getElementById('payload-input').value);
+    } catch (e) {
+        document.getElementById('build-output').innerHTML =
+            `<div class="demo-result fail">❌ JSON parse error: ${e.message}</div>`;
+        return;
+    }
+    if (!BUILDER.keypair) {
+        BUILDER.keypair = await genEcdsaP256Keypair();
+    }
+
+    const encodedHeader = strToBase64Url(JSON.stringify(header));
+    const encodedPayload = strToBase64Url(JSON.stringify(payload));
+    const signingInput = `${encodedHeader}.${encodedPayload}`;
+    const sigBytes = await signEs256(BUILDER.keypair.privateKey, signingInput);
+    const encodedSignature = bytesToBase64Url(sigBytes);
+    const token = `${signingInput}.${encodedSignature}`;
+    BUILDER.token = token;
+
+    document.getElementById('build-output').innerHTML = `
+        <div class="build-step">
+            <strong>1. Encode header (JSON → base64url)</strong>
+            ${encodedHeader}
+        </div>
+        <div class="build-step">
+            <strong>2. Encode payload (JSON → base64url)</strong>
+            ${encodedPayload}
+        </div>
+        <div class="build-step">
+            <strong>3. Form signing input (header + "." + payload)</strong>
+            ${signingInput}
+        </div>
+        <div class="build-step">
+            <strong>4. Sign with ECDSA P-256 + SHA-256 (${sigBytes.length} bytes, raw R∥S)</strong>
+            ${Array.from(sigBytes).map(b => b.toString(16).padStart(2,'0')).join('')}
+        </div>
+        <div class="build-step">
+            <strong>5. base64url the signature</strong>
+            ${encodedSignature}
+        </div>
+        <div class="build-step">
+            <strong>6. Final token (header.payload.signature)</strong>
+            <div style="margin-top:6px">
+                <span style="background:#e7f0ff; padding:2px 4px; border-radius:3px">${encodedHeader}</span><span style="color:var(--muted)">.</span><span style="background:#fff4d0; padding:2px 4px; border-radius:3px">${encodedPayload}</span><span style="color:var(--muted)">.</span><span style="background:#fbe9e7; padding:2px 4px; border-radius:3px">${encodedSignature}</span>
+            </div>
+        </div>
+        <div class="demo-result ok">✅ Token built. ${token.length} characters total.</div>
+    `;
+    document.getElementById('build-btn').classList.add('done');
+    document.getElementById('verify-btn').disabled = false;
+    document.getElementById('verify-btn').classList.remove('done');
+};
+
+document.getElementById('verify-btn').onclick = async () => {
+    if (!BUILDER.keypair || !BUILDER.token) return;
+    const parts = BUILDER.token.split('.');
+    const signingInput = `${parts[0]}.${parts[1]}`;
+    const sigBytes = Uint8Array.from(
+        atob(parts[2].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice(0, (4 - parts[2].length % 4) % 4)),
+        c => c.charCodeAt(0),
+    );
+
+    // Decode header to check alg
+    const header = JSON.parse(base64UrlToStr(parts[0]));
+    const algOk = header.alg === 'ES256';
+
+    document.getElementById('verify-btn').classList.add('done');
+    if (!algOk) {
+        const existing = document.getElementById('build-output').innerHTML;
+        document.getElementById('build-output').innerHTML = existing +
+            `<div class="demo-result fail">❌ Strict verifier: <code>header.alg</code> is "${header.alg}", expected "ES256". <strong>Rejected before crypto runs.</strong></div>`;
+        return;
+    }
+
+    const valid = await verifyEs256(BUILDER.keypair.publicKey, signingInput, sigBytes);
+    const existing = document.getElementById('build-output').innerHTML;
+    document.getElementById('build-output').innerHTML = existing + (
+        valid
+            ? `<div class="demo-result ok">✅ Verify passed: <code>alg === 'ES256'</code> AND signature verifies under the public key.</div>`
+            : `<div class="demo-result fail">❌ Signature does not verify.</div>`
+    );
+};
+
+document.getElementById('builder-reset').onclick = () => {
+    BUILDER.keypair = null;
+    BUILDER.token = null;
+    document.getElementById('build-output').innerHTML = '';
+    document.getElementById('build-btn').classList.remove('done');
+    document.getElementById('verify-btn').disabled = true;
+    document.getElementById('verify-btn').classList.remove('done');
+};
+
+// ─── alg:none attack sim ───────────────────────────────────────
+
+const ATTACK = {
+    forgedToken: null,
+};
+
+document.getElementById('forge-btn').onclick = () => {
+    const forgedHeader = strToBase64Url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+    const forgedPayload = strToBase64Url(JSON.stringify({
+        sub: 'admin-account',
+        iss: 'attacker-controlled',
+        impersonated: true,
+    }));
+    ATTACK.forgedToken = `${forgedHeader}.${forgedPayload}.`;  // empty signature
+
+    document.getElementById('attack-output').innerHTML = `
+        <div class="build-step" style="margin-top:14px">
+            <strong>Attacker's forged token</strong>
+            <span style="background:#e7f0ff; padding:2px 4px; border-radius:3px">${forgedHeader}</span><span style="color:var(--muted)">.</span><span style="background:#fff4d0; padding:2px 4px; border-radius:3px">${forgedPayload}</span><span style="color:var(--muted)">.</span><span style="background:#fbe9e7; padding:2px 4px; border-radius:3px; color:var(--muted)">(empty)</span>
+        </div>
+        <div class="build-step">
+            <strong>Decoded header</strong>
+            { "alg": "none", "typ": "JWT" }
+        </div>
+        <div class="build-step">
+            <strong>Decoded payload</strong>
+            { "sub": "admin-account", "iss": "attacker-controlled", "impersonated": true }
+        </div>
+        <div class="demo-result info">Token forged. No signature. Now try the two verifiers above.</div>
+    `;
+};
+
+document.getElementById('verify-naive-btn').onclick = () => {
+    if (!ATTACK.forgedToken) {
+        document.getElementById('attack-output').innerHTML =
+            `<div class="demo-result info">Forge a token first.</div>`;
+        return;
+    }
+    const parts = ATTACK.forgedToken.split('.');
+    const header = JSON.parse(base64UrlToStr(parts[0]));
+    const existing = document.getElementById('attack-output').innerHTML;
+
+    // Naive: dispatch on header.alg
+    let result;
+    if (header.alg === 'none') {
+        result = `<div class="demo-result fail">❌ <strong>Naïve verifier returned VALID.</strong><br>
+        Logic: <code>switch(header.alg) { case 'none': return true; }</code><br>
+        The verifier obeyed the attacker-supplied header. Token accepted. <strong>Game over.</strong></div>`;
+    } else {
+        result = `<div class="demo-result ok">✅ Naïve verifier would have run real crypto here.</div>`;
+    }
+    document.getElementById('attack-output').innerHTML = existing + result;
+};
+
+document.getElementById('verify-strict-btn').onclick = () => {
+    if (!ATTACK.forgedToken) {
+        document.getElementById('attack-output').innerHTML =
+            `<div class="demo-result info">Forge a token first.</div>`;
+        return;
+    }
+    const parts = ATTACK.forgedToken.split('.');
+    const header = JSON.parse(base64UrlToStr(parts[0]));
+    const existing = document.getElementById('attack-output').innerHTML;
+
+    const expectedAlg = 'ES256';
+    if (header.alg !== expectedAlg) {
+        const result = `<div class="demo-result ok">✅ <strong>Strict verifier rejected the token.</strong><br>
+        Logic: <code>if (header.alg !== expectedAlg) reject;</code><br>
+        Expected <code>${expectedAlg}</code>, got <code>${header.alg}</code>. Rejected before any crypto runs. Attack defeated.</div>`;
+        document.getElementById('attack-output').innerHTML = existing + result;
+    }
+};
+
+</script>
+</body>
+</html>
