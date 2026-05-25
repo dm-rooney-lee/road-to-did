@@ -1,13 +1,12 @@
 /**
  * 01 — Signatures & Hashing
  *
- * READ FIRST  ./signatures.notes.md
+ * READ FIRST  ./signatures.notes.html  (interactive concepts + sign/verify demo)
  * IMPLEMENT   One function per section. Fill in each body.
  * VERIFY      npm test
  */
 
-import {generateKeyPairSync, type KeyObject, sign, verify,} from 'node:crypto';
-import {hash} from 'crypto';
+import {generateKeyPairSync, hash, type KeyObject, sign, verify} from 'node:crypto';
 
 function TODO(label: string): never {
     throw new Error(`TODO — ${label} not implemented`);
@@ -17,7 +16,7 @@ function TODO(label: string): never {
 // Section 1 — Ed25519
 //   1a. Generate Ed25519 keypair               → publicKey, privateKey
 //   1b. Sign `message` with Ed25519            → signature
-//   1c. Verify signature against `message`     → honestValid
+//   1c. Verify signature against `message`     → messageValid
 //   1d. Verify signature against `tampered`    → tamperedValid
 // ============================================================
 
@@ -32,16 +31,16 @@ export function signAndVerifyWithEd25519(
     tamperedValid: boolean;
 } {
     const {privateKey, publicKey} = generateKeyPairSync('ed25519');
-    const signature = sign(null, Buffer.from(message), privateKey);
-    const isSignatureValid = verify(null, message, publicKey, signature);
-    const isTamperedValid = verify(null, tampered, publicKey, signature);
+    const signature = sign(null, message, privateKey);
+    const messageValid = verify(null, message, publicKey, signature);
+    const tamperedValid = verify(null, tampered, publicKey, signature);
 
     return {
-        publicKey: publicKey,
-        privateKey: privateKey,
-        signature: signature,
-        messageValid: isSignatureValid,
-        tamperedValid: isTamperedValid,
+        publicKey,
+        privateKey,
+        signature,
+        messageValid,
+        tamperedValid,
     };
 }
 
@@ -58,16 +57,16 @@ export function signAndVerifyWithEcdsaP256(message: Buffer): {
     signature: Buffer;
     valid: boolean;
 } {
-    const {privateKey, publicKey} = generateKeyPairSync('ec', { namedCurve: 'P-256' });
-    const signature = sign('sha256', Buffer.from(message), privateKey);
-    const isValid = verify('sha256', message, publicKey, signature);
+    const {privateKey, publicKey} = generateKeyPairSync('ec', {namedCurve: 'P-256'});
+    const signature = sign('sha256', message, privateKey);
+    const valid = verify('sha256', message, publicKey, signature);
 
     return {
-        publicKey: publicKey,
-        privateKey: privateKey,
-        signature: signature,
-        valid: isValid,
-    }
+        publicKey,
+        privateKey,
+        signature,
+        valid,
+    };
 }
 
 // ============================================================
@@ -92,20 +91,20 @@ export function hashAndSignWithEcdsaP256(message: Buffer): {
     signature: Buffer;
     signatureValid: boolean;
 } {
-    const {privateKey, publicKey} = generateKeyPairSync('ec', { namedCurve: 'P-256' });
-    const hexDigest = hash('sha256', message);
-    const bytesDigest = hash('sha256', message, 'buffer');
+    const {privateKey, publicKey} = generateKeyPairSync('ec', {namedCurve: 'P-256'});
+    const digestHex = hash('sha256', message);
+    const digestBytes = hash('sha256', message, 'buffer');
     const signature = sign('sha256', message, privateKey);
-    const isValid = verify('sha256', message, publicKey, signature);
+    const signatureValid = verify('sha256', message, publicKey, signature);
 
     return {
-        digestHex: hexDigest,
-        digestBytes: bytesDigest,
-        publicKey: publicKey,
-        privateKey: privateKey,
-        signature: signature,
-        signatureValid: isValid,
-    }
+        digestHex,
+        digestBytes,
+        publicKey,
+        privateKey,
+        signature,
+        signatureValid,
+    };
 }
 
 // ============================================================
