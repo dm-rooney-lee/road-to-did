@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>05 — CBOR / COSE</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --code-bg: #f0eee5;
+        --highlight: #fff4c4;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+        --mt0: #1e6fff;        /* uint */
+        --mt1: #c8332b;        /* nint */
+        --mt2: #b8860b;        /* bstr */
+        --mt3: #2e8b57;        /* tstr */
+        --mt4: #6f3eb8;        /* array */
+        --mt5: #d4711a;        /* map */
+        --mt6: #555;           /* tag */
+        --sig: #c8332b;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.55 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 6px 0;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+
+    .page-nav {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+
+    .bg-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin: 4px 0 14px;
+        flex-wrap: wrap;
+    }
+    .bg-tab-button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        color: var(--muted);
+        position: relative;
+        top: 1px;
+    }
+    .bg-tab-button.active {
+        color: var(--ink);
+        border-color: var(--border);
+        border-bottom-color: var(--panel);
+        background: var(--panel);
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+    }
+    .bg-tab-content { display: none; }
+    .bg-tab-content.active { display: block; }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .concept-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .concept-card h4 { margin: 0 0 4px; }
+    .concept-card .tagline {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+    .concept-card .body { font-size: 12px; line-height: 1.5; }
+
+    table.types-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 13px;
+    }
+    .types-table th, .types-table td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .types-table th { background: var(--code-bg); font-weight: 600; }
+    .types-table .mt-bar {
+        display: inline-block;
+        width: 8px;
+        height: 12px;
+        margin-right: 6px;
+        vertical-align: middle;
+        border-radius: 2px;
+    }
+    .types-table code { font-size: 11px; }
+
+    /* Byte breakdown */
+    .byte-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 12px 0;
+        font: 13px/1.5 ui-monospace, monospace;
+    }
+    .byte-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .byte-row .bytes {
+        background: var(--code-bg);
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-weight: 600;
+        min-width: 140px;
+    }
+    .byte-row .arrow { color: var(--muted); }
+    .byte-row .meaning {
+        font: 12px/1.5 -apple-system, sans-serif;
+        color: var(--ink);
+        flex: 1;
+    }
+    .byte-row .meaning .label {
+        color: var(--muted);
+        margin-right: 6px;
+    }
+
+    /* CBOR encoder demo */
+    .encoder-demo {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 6px;
+        margin: 10px 0;
+    }
+    .encoder-demo button {
+        padding: 8px 10px;
+        font: 12px/1.3 -apple-system, sans-serif;
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+        text-align: left;
+    }
+    .encoder-demo button:hover { color: var(--ink); border-color: var(--mt0); }
+    .encoder-demo button.active { color: var(--ink); border-color: var(--ink); background: white; }
+    .encoder-demo button .value-label {
+        display: block;
+        font-weight: 600;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+    .encoder-demo button .type-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .encode-result {
+        margin: 14px 0;
+        padding: 14px;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+    .encode-result h4 {
+        margin: 0 0 10px;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+    }
+    .encode-result .hex-line {
+        font: 14px/1.6 ui-monospace, monospace;
+        background: var(--code-bg);
+        padding: 10px 12px;
+        border-radius: 4px;
+        margin-bottom: 12px;
+        word-break: break-all;
+    }
+    .byte-token {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin: 1px;
+        font-weight: 600;
+        cursor: help;
+    }
+    .byte-token.mt0 { background: #e7f0ff; color: var(--mt0); }
+    .byte-token.mt1 { background: #fbe9e7; color: var(--mt1); }
+    .byte-token.mt2 { background: #fff4d0; color: #8a6500; }
+    .byte-token.mt3 { background: #e0f1e5; color: var(--mt3); }
+    .byte-token.mt4 { background: #efe5ff; color: var(--mt4); }
+    .byte-token.mt5 { background: #ffe9d0; color: var(--mt5); }
+    .byte-token.mt6 { background: #e5e5e5; color: var(--mt6); }
+    .byte-token.arg { background: #f0eee5; color: var(--ink); }
+    .byte-token.payload { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+
+    .encode-result .anno {
+        font: 12px/1.6 -apple-system, sans-serif;
+    }
+    .encode-result .anno-line {
+        padding: 3px 0;
+    }
+    .encode-result .anno-line .swatch {
+        display: inline-block;
+        width: 18px;
+        height: 12px;
+        border-radius: 2px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    /* COSE_Sign1 anatomy */
+    .cose-anatomy {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 14px 0;
+    }
+    .cose-elem {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 12px 14px;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        border-left: 4px solid var(--border);
+    }
+    .cose-elem.idx-tag    { border-left-color: var(--mt6); }
+    .cose-elem.idx-outer  { border-left-color: var(--mt4); }
+    .cose-elem.idx-prot   { border-left-color: var(--mt2); }
+    .cose-elem.idx-unprot { border-left-color: var(--mt5); }
+    .cose-elem.idx-payld  { border-left-color: var(--mt2); }
+    .cose-elem.idx-sig    { border-left-color: var(--sig); }
+    .cose-elem .pos {
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .cose-elem .body { font-size: 13px; line-height: 1.5; }
+    .cose-elem code { font-size: 11px; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+
+    .size-compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 14px 0;
+    }
+    @media (max-width: 760px) { .size-compare { grid-template-columns: 1fr; } }
+    .size-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px;
+    }
+    .size-card h4 { margin: 0 0 6px; font-size: 13px; }
+    .size-card .bytes-display {
+        font: 12px/1.5 ui-monospace, monospace;
+        background: var(--code-bg);
+        padding: 8px 10px;
+        border-radius: 4px;
+        margin: 6px 0;
+        word-break: break-all;
+    }
+    .size-card .byte-count {
+        font: 24px/1 -apple-system, sans-serif;
+        font-weight: 700;
+        color: var(--ink);
+        margin: 8px 0 4px;
+    }
+    .size-card .label {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Quiz */
+    .quiz-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .quiz-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .quiz-card .question { font-weight: 600; margin: 0 0 10px; font-size: 13px; }
+    .reveal-btn {
+        padding: 5px 12px;
+        font: 11px/1 -apple-system, sans-serif;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .reveal-btn:hover { background: var(--code-bg); color: var(--ink); }
+    .quiz-card .answer {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff4d0;
+        border-left: 3px solid var(--warn);
+        border-radius: 0 4px 4px 0;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .quiz-card .answer.hidden { display: none; }
+
+    /* References */
+    .ref-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .ref-card {
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        text-decoration: none;
+        color: var(--ink);
+        transition: transform 100ms;
+    }
+    .ref-card:hover { transform: translateY(-2px); border-color: var(--mt0); }
+    .ref-card strong { display: block; color: var(--mt0); font-size: 13px; }
+    .ref-card .ref-title { font-size: 13px; margin: 2px 0; font-weight: 500; }
+    .ref-card small { color: var(--muted); font-size: 11px; display: block; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+    <h1>05 — CBOR / COSE</h1>
+    <p>The binary cousins of JSON and JWS. Same data model, much smaller wire footprint. CBOR is the serialization; COSE is signing/encryption on top. Required reading before mDL/mdoc (ISO 18013-5).</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#background">Background</a>
+    <a href="#encoder">CBOR encoder explorer</a>
+    <a href="#cose">COSE_Sign1 anatomy</a>
+    <a href="#size">Size comparison</a>
+    <a href="#references">Self-check &amp; refs</a>
+</nav>
+
+<!-- ─── Background ─────────────────────────────────────────────── -->
+<section class="panel" id="background">
+    <h2>Background — read first</h2>
+
+    <div class="bg-tabs">
+        <button class="bg-tab-button active" data-bg="why">Why CBOR / COSE</button>
+        <button class="bg-tab-button" data-bg="bytes">CBOR byte format</button>
+        <button class="bg-tab-button" data-bg="cose">COSE family</button>
+        <button class="bg-tab-button" data-bg="sigstr">Sig_structure</button>
+    </div>
+
+    <!-- Tab: why -->
+    <div class="bg-tab-content active" id="bg-why">
+        <h3>The shape of the family</h3>
+        <table class="types-table">
+            <thead>
+                <tr><th>Text world</th><th>Binary world</th><th>Spec</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>JSON — string-keyed objects, UTF-8 text</td>
+                    <td><strong>CBOR</strong> — same data model in binary, length-prefixed bytes</td>
+                    <td>CBOR: RFC 8949</td>
+                </tr>
+                <tr>
+                    <td>JWS — signed JSON</td>
+                    <td><strong>COSE_Sign / COSE_Sign1</strong> — signed CBOR</td>
+                    <td>COSE: RFC 9052</td>
+                </tr>
+                <tr>
+                    <td>JWE — encrypted JSON</td>
+                    <td><strong>COSE_Encrypt / Encrypt0</strong> — encrypted CBOR</td>
+                    <td>COSE: RFC 9052</td>
+                </tr>
+                <tr>
+                    <td>JWK — key as JSON object</td>
+                    <td><strong>COSE_Key</strong> — key as CBOR map</td>
+                    <td>COSE: RFC 9052</td>
+                </tr>
+                <tr>
+                    <td>JWA — algorithm name strings</td>
+                    <td>same algs, small integer labels (ES256 = -7, EdDSA = -8)</td>
+                    <td>COSE Algorithms (IANA)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Why a binary cousin</h3>
+        <div class="card-grid">
+            <div class="concept-card">
+                <h4>Wire size</h4>
+                <div class="tagline">~30–60% smaller than JOSE on typical payloads</div>
+                <div class="body">JSON pays for whitespace, quoted keys, and base64url overhead. CBOR's length-prefixed binary, plus integer-keyed maps, removes most of that.</div>
+            </div>
+            <div class="concept-card">
+                <h4>Constrained transports</h4>
+                <div class="tagline">NFC, BLE, QR</div>
+                <div class="body">mDL/mdoc transmits over device-to-device channels with strict size budgets. JSON-based formats don't fit.</div>
+            </div>
+            <div class="concept-card">
+                <h4>Constrained devices</h4>
+                <div class="tagline">IoT, smart cards, secure elements</div>
+                <div class="body">CBOR is parseable without a UTF-8 stack, without a JSON tokenizer, in ~1 KB of code. Designed for environments where JSON.parse is too heavy.</div>
+            </div>
+            <div class="concept-card">
+                <h4>Deterministic encoding</h4>
+                <div class="tagline">Signature-friendly</div>
+                <div class="body">JSON has whitespace and key-order ambiguity. Signing canonicalized CBOR doesn't have that problem — there's exactly one canonical encoding per value.</div>
+            </div>
+        </div>
+
+        <h3>Where you'll meet each in DID/VC</h3>
+        <ul style="font-size:13px">
+            <li><strong>mDL / mdoc</strong> (ISO 18013-5) — CBOR-encoded credential wrapped in COSE_Sign1. The reason this item exists.</li>
+            <li><strong>COSE_Key</strong> — how device-bound keys are conveyed in mdoc, side by side with JWK in mixed deployments.</li>
+            <li><strong>WebAuthn / FIDO2</strong> — attestation objects are CBOR; authenticator data is binary; cryptographic structures use COSE.</li>
+            <li><strong>EUDI Wallet</strong> — supports both SD-JWT VC (JSON family) and mdoc (CBOR family). Real implementations need both.</li>
+        </ul>
+    </div>
+
+    <!-- Tab: bytes -->
+    <div class="bg-tab-content" id="bg-bytes">
+        <h3>The CBOR initial byte</h3>
+        <p>Every CBOR value starts with one byte that packs two things:</p>
+        <pre style="text-align: center; font-size: 13px;">
+┌───────────┬────────────────────┐
+│  3 bits   │       5 bits       │
+│ major type│  argument or marker│
+└───────────┴────────────────────┘</pre>
+
+        <p>The top 3 bits identify the major type (0–7). The bottom 5 bits are either the value itself (if it's small) or a marker telling the parser how many additional bytes follow as the "argument."</p>
+
+        <h3>Argument size markers (bottom 5 bits)</h3>
+        <table class="types-table">
+            <thead>
+                <tr><th>Bottom 5 bits</th><th>Argument</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>0..23</code> (0x00–0x17)</td><td>The argument IS this value. No additional bytes.</td></tr>
+                <tr><td><code>24</code> (0x18)</td><td>Next 1 byte holds the argument.</td></tr>
+                <tr><td><code>25</code> (0x19)</td><td>Next 2 bytes hold the argument (big-endian).</td></tr>
+                <tr><td><code>26</code> (0x1a)</td><td>Next 4 bytes hold the argument.</td></tr>
+                <tr><td><code>27</code> (0x1b)</td><td>Next 8 bytes hold the argument.</td></tr>
+            </tbody>
+        </table>
+
+        <h3>The major types this lab uses</h3>
+        <table class="types-table">
+            <thead>
+                <tr><th>MT</th><th>Type</th><th>What the argument means</th><th>What follows</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt0)"></span><code>0</code></td>
+                    <td>unsigned int</td>
+                    <td>the value itself (0..2^64-1)</td>
+                    <td>nothing</td>
+                </tr>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt1)"></span><code>1</code></td>
+                    <td>negative int</td>
+                    <td>encodes -(arg+1)</td>
+                    <td>nothing</td>
+                </tr>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt2)"></span><code>2</code></td>
+                    <td>byte string</td>
+                    <td>length in bytes</td>
+                    <td>arg bytes of payload</td>
+                </tr>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt3)"></span><code>3</code></td>
+                    <td>text string (UTF-8)</td>
+                    <td>length in bytes</td>
+                    <td>arg bytes of UTF-8</td>
+                </tr>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt4)"></span><code>4</code></td>
+                    <td>array</td>
+                    <td>number of items</td>
+                    <td>arg recursively-encoded values</td>
+                </tr>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt5)"></span><code>5</code></td>
+                    <td>map</td>
+                    <td>number of pairs</td>
+                    <td>arg pairs of (key, value), each recursive</td>
+                </tr>
+                <tr>
+                    <td><span class="mt-bar" style="background:var(--mt6)"></span><code>6</code></td>
+                    <td>tagged</td>
+                    <td>tag number</td>
+                    <td>one recursive value (the tagged content)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 12px"><em>Major type 7 (simples / floats) exists but isn't used in this lab. Tagged values appear only as the outer wrapper of a COSE_Sign1 message — CBOR tag 18.</em></p>
+
+        <h3>Negative int encoding (the trickiest case)</h3>
+        <p>Major type 1 encodes negative integers, but the argument is positive. The actual value is <code>-(arg+1)</code>. So:</p>
+        <ul style="font-size: 13px">
+            <li><code>-1</code> → arg = 0 → bytes <code>0x20</code></li>
+            <li><code>-7</code> (ES256 alg id) → arg = 6 → bytes <code>0x26</code></li>
+            <li><code>-100</code> → arg = 99 → bytes <code>0x38 0x63</code> (marker 24 → 1-byte arg)</li>
+        </ul>
+        <p>The trick: <code>-1</code> is the smallest in magnitude, so it pairs with arg = 0. As the negative number grows in magnitude, the argument grows.</p>
+    </div>
+
+    <!-- Tab: cose -->
+    <div class="bg-tab-content" id="bg-cose">
+        <h3>The COSE message family</h3>
+        <p>COSE defines six structures, all CBOR arrays with similar shapes. The lab only builds <strong>COSE_Sign1</strong>, the single-signer signed message — the binary parallel to compact JWS.</p>
+
+        <table class="types-table">
+            <thead>
+                <tr><th>Structure</th><th>Purpose</th><th>JWS/JWE equivalent</th></tr>
+            </thead>
+            <tbody>
+                <tr style="background: #fff9e6">
+                    <td><strong>COSE_Sign1</strong></td>
+                    <td>Signed message, one signer</td>
+                    <td>compact JWS</td>
+                </tr>
+                <tr>
+                    <td>COSE_Sign</td>
+                    <td>Signed message, multiple signers</td>
+                    <td>JSON Serialization JWS</td>
+                </tr>
+                <tr>
+                    <td>COSE_Mac0</td>
+                    <td>MAC, one recipient (no signature, just integrity)</td>
+                    <td>JWS with HS256</td>
+                </tr>
+                <tr>
+                    <td>COSE_Mac</td>
+                    <td>MAC, multiple recipients</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>COSE_Encrypt0</td>
+                    <td>Encrypted, one recipient</td>
+                    <td>compact JWE</td>
+                </tr>
+                <tr>
+                    <td>COSE_Encrypt</td>
+                    <td>Encrypted, multiple recipients</td>
+                    <td>JSON Serialization JWE</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>COSE_Sign1 structure</h3>
+        <p>A four-element CBOR array, optionally tagged with CBOR tag <code>18</code>:</p>
+
+        <pre>tag(18) [
+    protected:   bstr,              // CBOR-encoded map of "header parameters that MUST be signed"
+    unprotected: map,               // header parameters that need NOT be signed (e.g. hints)
+    payload:     bstr or nil,       // the bytes being signed (or nil if external)
+    signature:   bstr,              // 64 bytes for ES256 (raw R‖S, not DER)
+]</pre>
+
+        <p>Three things worth flagging:</p>
+        <ul style="font-size: 13px">
+            <li>The <strong>protected header is wrapped in a bstr</strong>, not directly nested as a map. The bytes inside the bstr are themselves a CBOR-encoded map. This makes the protected header bytes <em>byte-stable</em> on the wire — receivers don't have to re-encode it to verify.</li>
+            <li>The <strong>signature is over the Sig_structure, not the array</strong> — see next tab.</li>
+            <li>The <strong>tag is optional</strong>. Some profiles emit tagged (mDL does); some emit untagged. Verifiers should accept both.</li>
+        </ul>
+    </div>
+
+    <!-- Tab: sigstr -->
+    <div class="bg-tab-content" id="bg-sigstr">
+        <h3>Sig_structure — what's actually signed</h3>
+        <p>The signature in element[3] is NOT a signature over the array. It's a signature over a <em>separate</em> CBOR-encoded structure called <strong>Sig_structure</strong> (RFC 9052 §4.4):</p>
+
+        <pre>Sig_structure = [
+    context:        "Signature1",   // tstr — literal label for COSE_Sign1
+    body_protected: bstr,           // same bytes as element[0] of the message
+    external_aad:   bstr,           // additional authenticated data (often empty)
+    payload:        bstr,           // same bytes as element[2] of the message
+]</pre>
+
+        <p>The signer:</p>
+        <ol style="font-size: 13px">
+            <li>builds the protected header map and encodes it to bytes → <code>body_protected</code></li>
+            <li>builds the Sig_structure array above</li>
+            <li>CBOR-encodes the array → <code>to_be_signed</code></li>
+            <li>signs <code>to_be_signed</code> with ES256 → 64-byte raw R‖S</li>
+            <li>places the signature in element[3] of the COSE_Sign1 array</li>
+        </ol>
+
+        <p>The verifier reconstructs the same Sig_structure from the received message, CBOR-encodes it, and verifies the signature against those bytes.</p>
+
+        <h3>Why the indirection?</h3>
+        <p>The literal string <code>"Signature1"</code> in the structure pins the algorithm context. If an attacker re-presented a COSE_Mac0 message as if it were a COSE_Sign1, the verifier would reconstruct with <code>"Signature1"</code> while the original was tied to <code>"MAC0"</code>. Different to_be_signed bytes → signature fails. This is COSE's defense against algorithm/structure confusion — the binary cousin of JWS's <code>alg</code> discipline.</p>
+
+        <p>The <code>external_aad</code> slot lets the protocol bind additional context (e.g., a session ID) into the signature without putting it in the message. mDL uses this. Most simple cases pass an empty bstr.</p>
+    </div>
+</section>
+
+<!-- ─── CBOR encoder explorer ──────────────────────────────────── -->
+<section class="panel" id="encoder">
+    <h2>🔬 CBOR encoder explorer</h2>
+    <p>Pick a value and see exactly which byte does what. Hover any byte for a detailed annotation.</p>
+
+    <div class="encoder-demo">
+        <button data-key="uint-0"><span class="value-label">0</span><span class="type-label">uint</span></button>
+        <button data-key="uint-23"><span class="value-label">23</span><span class="type-label">uint, top of inline range</span></button>
+        <button data-key="uint-24"><span class="value-label">24</span><span class="type-label">uint, 1-byte arg</span></button>
+        <button data-key="uint-1000"><span class="value-label">1000</span><span class="type-label">uint, 2-byte arg</span></button>
+        <button data-key="nint-1"><span class="value-label">-1</span><span class="type-label">nint</span></button>
+        <button data-key="nint-7"><span class="value-label">-7</span><span class="type-label">nint (ES256 alg)</span></button>
+        <button data-key="bstr-empty"><span class="value-label">Buffer []</span><span class="type-label">bstr, empty</span></button>
+        <button data-key="bstr-1234"><span class="value-label">Buffer [01,02,03,04]</span><span class="type-label">bstr</span></button>
+        <button data-key="tstr-ietf"><span class="value-label">"IETF"</span><span class="type-label">tstr</span></button>
+        <button data-key="tstr-sig1"><span class="value-label">"Signature1"</span><span class="type-label">tstr (COSE label)</span></button>
+        <button data-key="arr-empty"><span class="value-label">[]</span><span class="type-label">array, empty</span></button>
+        <button data-key="arr-123"><span class="value-label">[1,2,3]</span><span class="type-label">array</span></button>
+        <button data-key="map-empty"><span class="value-label">Map {}</span><span class="type-label">map, empty</span></button>
+        <button data-key="map-alg"><span class="value-label">Map {1: -7}</span><span class="type-label">map (COSE protected hdr)</span></button>
+    </div>
+
+    <div class="encode-result" id="encode-output"></div>
+</section>
+
+<!-- ─── COSE_Sign1 anatomy ─────────────────────────────────────── -->
+<section class="panel" id="cose">
+    <h2>📦 COSE_Sign1 anatomy</h2>
+    <p>A complete COSE_Sign1 over payload <code>"hello"</code> (5 bytes), with <code>kid = 01</code> and ES256. Each row is one element of the structure.</p>
+
+    <div class="cose-anatomy">
+        <div class="cose-elem idx-tag">
+            <div class="pos">tag(18)<br>1 byte</div>
+            <div class="body">
+                <code>0xd2</code>
+                <p style="margin:6px 0 0">Optional CBOR tag indicating this CBOR value is a COSE_Sign1. Decoders may skip it; encoders may omit it. mDL requires it.</p>
+            </div>
+        </div>
+        <div class="cose-elem idx-outer">
+            <div class="pos">array(4)<br>1 byte</div>
+            <div class="body">
+                <code>0x84</code>
+                <p style="margin:6px 0 0">CBOR major type 4 (array), with 4 items.</p>
+            </div>
+        </div>
+        <div class="cose-elem idx-prot">
+            <div class="pos">[0] protected<br>4 bytes</div>
+            <div class="body">
+                <code>0x43 0xa1 0x01 0x26</code>
+                <p style="margin:6px 0 0">A bstr of length 3, containing the CBOR-encoded map <code>{ 1: -7 }</code>.<br>
+                Inside: <code>0xa1</code> (map of 1), <code>0x01</code> (key = alg), <code>0x26</code> (value = -7 = ES256).<br>
+                The map is wrapped in a bstr so its bytes stay stable on the wire.</p>
+            </div>
+        </div>
+        <div class="cose-elem idx-unprot">
+            <div class="pos">[1] unprotected<br>4 bytes</div>
+            <div class="body">
+                <code>0xa1 0x04 0x41 0x01</code>
+                <p style="margin:6px 0 0">A direct CBOR map (not wrapped in bstr): <code>{ 4: h'01' }</code>.<br>
+                <code>0xa1</code> (map of 1), <code>0x04</code> (key = kid), <code>0x41 0x01</code> (bstr of length 1, contents <code>0x01</code>).</p>
+            </div>
+        </div>
+        <div class="cose-elem idx-payld">
+            <div class="pos">[2] payload<br>6 bytes</div>
+            <div class="body">
+                <code>0x45 0x68 0x65 0x6c 0x6c 0x6f</code>
+                <p style="margin:6px 0 0">bstr of length 5, containing the bytes of <code>"hello"</code> verbatim.</p>
+            </div>
+        </div>
+        <div class="cose-elem idx-sig">
+            <div class="pos">[3] signature<br>66 bytes</div>
+            <div class="body">
+                <code>0x58 0x40 &lt;64 bytes&gt;</code>
+                <p style="margin:6px 0 0">bstr of length 64 (<code>0x58</code> = marker 24 → 1-byte length follows; <code>0x40</code> = 64).<br>
+                Contents: ECDSA raw R‖S signature over the CBOR-encoded Sig_structure (NOT over the COSE_Sign1 array).</p>
+            </div>
+        </div>
+    </div>
+
+    <p style="margin-top: 14px"><strong>Total: 82 bytes for a 5-byte payload.</strong> Of those, 64 bytes are the signature itself — fixed overhead for ES256, regardless of payload size. The structural overhead is just 18 bytes.</p>
+</section>
+
+<!-- ─── Size comparison ────────────────────────────────────────── -->
+<section class="panel" id="size">
+    <h2>📏 Wire size: COSE vs JWS</h2>
+    <p>Same protected header (alg = ES256), same payload (<code>"hello"</code>), same ECDSA signature. Different envelopes.</p>
+
+    <div class="size-compare">
+        <div class="size-card" style="border-left: 3px solid var(--mt0);">
+            <h4>Compact JWS</h4>
+            <div class="bytes-display">eyJhbGciOiJFUzI1NiJ9.aGVsbG8.&lt;86-char b64 sig&gt;</div>
+            <div class="byte-count">~123</div>
+            <div class="label">bytes (text)</div>
+            <p style="font-size: 12px; margin-top: 10px; color: var(--muted)">
+                Breakdown: header b64 (15) + "." + payload b64 (7) + "." + sig b64 (86) = ~110 bytes; plus protocol metadata in some transports.
+            </p>
+        </div>
+        <div class="size-card" style="border-left: 3px solid var(--success);">
+            <h4>COSE_Sign1 (tagged)</h4>
+            <div class="bytes-display">d284 43a10126 a1044101 4568656c6c6f 5840&lt;64 bytes sig&gt;</div>
+            <div class="byte-count">82</div>
+            <div class="label">bytes (binary)</div>
+            <p style="font-size: 12px; margin-top: 10px; color: var(--muted)">
+                Breakdown: 1 (tag) + 1 (array) + 4 (protected) + 4 (unprotected) + 6 (payload) + 66 (signature) = 82 bytes.
+            </p>
+        </div>
+    </div>
+
+    <p style="margin-top: 8px"><strong>~33% smaller.</strong> Most of the savings come from removing base64url overhead (every 3 bytes of binary become 4 bytes of text in base64) and from using integer keys (alg=1) instead of JSON strings (<code>"alg":"ES256"</code>).</p>
+    <p style="font-size: 12px; color: var(--muted)">The signature itself is identical bytes in both — what differs is whether it's transported raw (COSE) or base64url-encoded (JWS).</p>
+</section>
+
+<!-- ─── Self-check + references ─────────────────────────────────── -->
+<section class="panel" id="references">
+    <h2>Self-check &amp; further reading</h2>
+
+    <h3>Self-check</h3>
+    <p style="color:var(--muted); font-size:12px; margin-top:0">Try to answer before clicking "Show answer".</p>
+    <div class="quiz-grid">
+        <div class="quiz-card">
+            <p class="question">What does CBOR's "initial byte" pack into its 8 bits?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Top 3 bits = major type (0–7), bottom 5 bits = either the value (0–23) or a marker (24/25/26/27) telling the parser that 1/2/4/8 more bytes follow as the argument.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">CBOR can encode the integer 23 as either <code>0x17</code> (1 byte) or <code>0x18 0x17</code> (2 bytes). Both are valid CBOR. Why is this a problem for signed messages, and how does the lab's <code>encodeCbor</code> avoid it?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">If an issuer signs the 1-byte form and a verifier re-encodes it as the 2-byte form (or vice versa), the Sig_structure to_be_signed bytes will differ and the signature won't validate. The fix is "core deterministic encoding" — always pick the shortest representation. The lab's encoder implements one rule per value, so it naturally produces deterministic output for the supported types.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">Why is the COSE_Sign1 protected header wrapped in a bstr instead of being a direct CBOR map (like the unprotected one)?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Because the signature is computed over the protected header's <em>bytes</em>, not over the parsed map. Wrapping it in a bstr means those bytes are transmitted verbatim; the verifier doesn't have to re-encode anything (which could produce a different byte sequence and break verification). The unprotected header isn't signed, so its byte stability doesn't matter.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">In COSE_Sign1, what gets fed to ECDSA to produce the signature — the four-element array, or something else?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Something else: the CBOR-encoded <strong>Sig_structure</strong>, which is the array <code>["Signature1", body_protected, external_aad, payload]</code>. The literal string <code>"Signature1"</code> binds the signature to the COSE_Sign1 context (preventing structure confusion with COSE_Mac0, COSE_Sign, etc.). The four-element COSE_Sign1 array is the <em>wrapper</em>; the Sig_structure is what's actually hashed and signed.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">CBOR map keys can be integers OR strings. Why does COSE consistently choose integers?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Wire size. <code>{ 1: -7 }</code> (alg = ES256 in COSE) is 3 bytes. <code>{ "alg": "ES256" }</code> is ~13 bytes in CBOR with string keys (or much larger in JSON). For mDL/mdoc and other transports with size constraints (NFC, BLE, QR codes), this matters. The trade-off is human readability — you can't eyeball a COSE message without a label registry.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">A COSE_Sign1 message starts with <code>0xd2 0x84 ...</code> Another one starts with <code>0x84 ...</code> (no <code>0xd2</code>). Are both valid?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Yes. The <code>0xd2</code> is CBOR tag 18, which indicates "the following CBOR value is a COSE_Sign1." It's optional per RFC 9052. Some profiles (mDL) require it. Many libraries emit it. Verifiers should accept both — strip the tag byte if present, then parse the array.</div>
+        </div>
+    </div>
+
+    <h3 style="margin-top:24px">Further reading</h3>
+    <div class="ref-grid">
+        <a href="https://datatracker.ietf.org/doc/html/rfc8949" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 8949</strong>
+            <div class="ref-title">CBOR (the data format)</div>
+            <small>~50 pages but the first 20 are the load-bearing ones. Appendix A has all the test vectors used in this lab.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc9052" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 9052</strong>
+            <div class="ref-title">COSE (signed/encrypted CBOR)</div>
+            <small>§4.2 (COSE_Sign1), §4.4 (Sig_structure) are the must-reads. The rest is parallel structures (Mac, Encrypt).</small>
+        </a>
+        <a href="https://www.iana.org/assignments/cose/cose.xhtml" target="_blank" rel="noopener" class="ref-card">
+            <strong>IANA COSE registry</strong>
+            <div class="ref-title">Algorithm / header label assignments</div>
+            <small>This is the table you'll keep open while debugging COSE messages. Maps integer labels back to names.</small>
+        </a>
+        <a href="https://datatracker.ietf.org/doc/html/rfc8949#section-4.2" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 8949 §4.2</strong>
+            <div class="ref-title">Deterministic encoding rules</div>
+            <small>The canonical encoding requirements: shortest int, sorted map keys, no indefinite-length. mDL requires this.</small>
+        </a>
+        <a href="https://cbor.me/" target="_blank" rel="noopener" class="ref-card">
+            <strong>cbor.me</strong>
+            <div class="ref-title">Paste-a-hex-string decoder</div>
+            <small>The CBOR equivalent of jwt.io. Useful for inspecting messages by hand during debugging.</small>
+        </a>
+        <a href="https://www.rfc-editor.org/rfc/rfc8392" target="_blank" rel="noopener" class="ref-card">
+            <strong>RFC 8392</strong>
+            <div class="ref-title">CWT — CBOR Web Token</div>
+            <small>JWT's binary cousin. Same idea (claims set as a token), in CBOR/COSE. Optional reading.</small>
+        </a>
+    </div>
+</section>
+
+</div>
+
+<script>
+// ─── Background tabs ───────────────────────────────────────────
+
+document.querySelectorAll('.bg-tab-button').forEach(b => {
+    b.onclick = () => {
+        const name = b.dataset.bg;
+        document.querySelectorAll('.bg-tab-button').forEach(x =>
+            x.classList.toggle('active', x.dataset.bg === name));
+        document.querySelectorAll('.bg-tab-content').forEach(c =>
+            c.classList.toggle('active', c.id === 'bg-' + name));
+    };
+});
+
+// ─── Quiz reveal ───────────────────────────────────────────────
+
+document.querySelectorAll('.reveal-btn').forEach(b => {
+    b.onclick = () => {
+        const card = b.closest('.quiz-card');
+        const answer = card.querySelector('.answer');
+        answer.classList.toggle('hidden');
+        b.textContent = answer.classList.contains('hidden') ? 'Show answer' : 'Hide answer';
+    };
+});
+
+// ─── CBOR encoder explorer ─────────────────────────────────────
+
+// Each example: hex bytes + an array of annotations (byte index ranges → meaning + major type)
+const EXAMPLES = {
+    'uint-0': {
+        title: 'encode(0)  // uint',
+        bytes: '00',
+        anno: [{ from: 0, to: 0, mt: 0, label: 'major type 0 (uint), value = 0 (fits in low 5 bits)' }],
+    },
+    'uint-23': {
+        title: 'encode(23)  // uint, top of inline range',
+        bytes: '17',
+        anno: [{ from: 0, to: 0, mt: 0, label: 'major type 0 (uint), value = 23 (still fits in low 5 bits — last value before needing extra bytes)' }],
+    },
+    'uint-24': {
+        title: 'encode(24)  // uint, needs 1 argument byte',
+        bytes: '1818',
+        anno: [
+            { from: 0, to: 0, mt: 0, label: 'major type 0 (uint), low 5 bits = 24 (marker: 1 argument byte follows)' },
+            { from: 1, to: 1, mt: 'arg', label: 'argument byte: 24 = 0x18 — the actual value' },
+        ],
+    },
+    'uint-1000': {
+        title: 'encode(1000)  // uint, needs 2 argument bytes',
+        bytes: '1903e8',
+        anno: [
+            { from: 0, to: 0, mt: 0, label: 'major type 0 (uint), low 5 bits = 25 (marker: 2 argument bytes follow)' },
+            { from: 1, to: 2, mt: 'arg', label: 'argument: 0x03e8 = 1000 (big-endian)' },
+        ],
+    },
+    'nint-1': {
+        title: 'encode(-1)  // nint',
+        bytes: '20',
+        anno: [{ from: 0, to: 0, mt: 1, label: 'major type 1 (nint), arg = 0 → value = -(0+1) = -1' }],
+    },
+    'nint-7': {
+        title: 'encode(-7)  // ES256 alg id',
+        bytes: '26',
+        anno: [{ from: 0, to: 0, mt: 1, label: 'major type 1 (nint), arg = 6 → value = -(6+1) = -7' }],
+    },
+    'bstr-empty': {
+        title: 'encode(Buffer.alloc(0))  // empty byte string',
+        bytes: '40',
+        anno: [{ from: 0, to: 0, mt: 2, label: 'major type 2 (bstr), length = 0 — no payload follows' }],
+    },
+    'bstr-1234': {
+        title: 'encode(Buffer.from([1,2,3,4]))  // 4-byte bstr',
+        bytes: '4401020304',
+        anno: [
+            { from: 0, to: 0, mt: 2, label: 'major type 2 (bstr), length = 4 (fits in low 5 bits)' },
+            { from: 1, to: 4, mt: 'payload', label: 'the 4 payload bytes: 01 02 03 04' },
+        ],
+    },
+    'tstr-ietf': {
+        title: 'encode("IETF")  // 4-byte text string',
+        bytes: '6449455446',
+        anno: [
+            { from: 0, to: 0, mt: 3, label: 'major type 3 (tstr), length = 4' },
+            { from: 1, to: 4, mt: 'payload', label: 'UTF-8 bytes for "IETF" = 0x49 0x45 0x54 0x46' },
+        ],
+    },
+    'tstr-sig1': {
+        title: 'encode("Signature1")  // COSE_Sign1 context label',
+        bytes: '6a5369676e617475726531',
+        anno: [
+            { from: 0, to: 0, mt: 3, label: 'major type 3 (tstr), length = 10' },
+            { from: 1, to: 10, mt: 'payload', label: 'UTF-8 bytes for "Signature1" — the hard-coded context that goes into every COSE_Sign1 Sig_structure' },
+        ],
+    },
+    'arr-empty': {
+        title: 'encode([])  // empty array',
+        bytes: '80',
+        anno: [{ from: 0, to: 0, mt: 4, label: 'major type 4 (array), count = 0 — no items follow' }],
+    },
+    'arr-123': {
+        title: 'encode([1, 2, 3])',
+        bytes: '83010203',
+        anno: [
+            { from: 0, to: 0, mt: 4, label: 'major type 4 (array), count = 3' },
+            { from: 1, to: 1, mt: 0, label: 'item 0: uint 1' },
+            { from: 2, to: 2, mt: 0, label: 'item 1: uint 2' },
+            { from: 3, to: 3, mt: 0, label: 'item 2: uint 3' },
+        ],
+    },
+    'map-empty': {
+        title: 'encode(new Map())  // empty map',
+        bytes: 'a0',
+        anno: [{ from: 0, to: 0, mt: 5, label: 'major type 5 (map), pair count = 0' }],
+    },
+    'map-alg': {
+        title: 'encode(new Map([[1, -7]]))  // COSE protected header { alg: ES256 }',
+        bytes: 'a10126',
+        anno: [
+            { from: 0, to: 0, mt: 5, label: 'major type 5 (map), pair count = 1' },
+            { from: 1, to: 1, mt: 0, label: 'key (uint): 1 = COSE label for "alg"' },
+            { from: 2, to: 2, mt: 1, label: 'value (nint): -7 = COSE algorithm id for ES256' },
+        ],
+    },
+};
+
+function renderEncode(key) {
+    const ex = EXAMPLES[key];
+    if (!ex) return;
+    const hex = ex.bytes.match(/.{2}/g) || [];
+
+    // Build a per-byte-index lookup from the annotations
+    const byByte = new Array(hex.length).fill(null);
+    for (const a of ex.anno) {
+        for (let i = a.from; i <= a.to; i++) byByte[i] = a;
+    }
+
+    const hexHtml = hex.map((b, i) => {
+        const a = byByte[i];
+        const cls = a ? (typeof a.mt === 'number' ? `mt${a.mt}` : a.mt) : 'payload';
+        return `<span class="byte-token ${cls}" title="byte ${i}: ${a ? a.label : ''}">${b}</span>`;
+    }).join('');
+
+    const annoHtml = ex.anno.map(a => {
+        const cls = typeof a.mt === 'number' ? `mt${a.mt}` : a.mt;
+        const colorMap = {
+            'mt0': 'var(--mt0)', 'mt1': 'var(--mt1)', 'mt2': 'var(--mt2)',
+            'mt3': 'var(--mt3)', 'mt4': 'var(--mt4)', 'mt5': 'var(--mt5)',
+            'mt6': 'var(--mt6)', 'arg': 'var(--code-bg)', 'payload': 'var(--border)',
+        };
+        const range = a.from === a.to ? `byte ${a.from}` : `bytes ${a.from}–${a.to}`;
+        return `<div class="anno-line"><span class="swatch" style="background:${colorMap[cls]}"></span><strong>${range}:</strong> ${a.label}</div>`;
+    }).join('');
+
+    document.getElementById('encode-output').innerHTML = `
+        <h4>${ex.title}</h4>
+        <div class="hex-line">${hexHtml}</div>
+        <div class="anno">${annoHtml}</div>
+    `;
+
+    document.querySelectorAll('.encoder-demo button').forEach(b =>
+        b.classList.toggle('active', b.dataset.key === key));
+}
+
+document.querySelectorAll('.encoder-demo button').forEach(b => {
+    b.onclick = () => renderEncode(b.dataset.key);
+});
+
+renderEncode('map-alg');   // start on the most COSE-relevant example
+
+</script>
+</body>
+</html>
