@@ -13,6 +13,7 @@
 
 import {type KeyObject} from 'node:crypto';
 import {encodeJwsCompact, verifyJwsCompact} from "../item2/jwt.ts";
+import {type} from "node:os";
 
 function TODO(label: string): never {
     throw new Error(`TODO — ${label} not implemented`);
@@ -112,7 +113,7 @@ export function verifyIdToken(
     publicKey: KeyObject,
     expectations: IdTokenExpectations,
 ): IdTokenVerifyResult {
-    const { valid, header, payload } = verifyJwsCompact(idToken, publicKey, 'ES256');
+    const { valid, payload } = verifyJwsCompact(idToken, publicKey, 'ES256');
     if (!valid) {
         return {
             valid: false,
@@ -122,14 +123,16 @@ export function verifyIdToken(
     }
 
     const { iss, aud, exp, nonce, sub } = payload;
-    const { issuer: expectedIssuer, audience: expectedAudience, nonce: expectedNonce, now } = expectations;
+    const { issuer, audience, nonce: expectedNonce, now } = expectations;
 
     let reason: 'signature' | 'iss' | 'aud' | 'exp' | 'nonce' | 'sub' | undefined;
-    if (iss !== expectedIssuer) reason = 'iss';
-    if (!(aud as string).includes(expectedAudience)) reason = 'aud';
-    if ((exp as number) <= now) reason = 'exp';
+    if (iss !== issuer) reason = 'iss';
+
+    const audList = Array.isArray(aud) ? aud : [aud];
+    if (!audList.includes(audience)) reason = 'aud';
+    if (typeof exp !== 'number' || exp <= now) reason = 'exp';
     if (expectedNonce !== undefined && nonce !== expectedNonce) reason = 'nonce';
-    if (sub === undefined || sub === '') reason = 'sub';
+    if (typeof sub !== 'string' || sub === '') reason = 'sub';
 
     return {
         valid: reason === undefined,

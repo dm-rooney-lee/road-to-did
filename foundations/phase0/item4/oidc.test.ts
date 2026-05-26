@@ -170,7 +170,24 @@ describe('Section 2 — verifyIdToken', () => {
         assert.equal(result.valid, true);
     });
 
-    test('2g — expired token (exp <= now) fails with reason "exp"', () => {
+    test('2g — string aud that contains client_id only as a substring is rejected (exact match required)', () => {
+        // Given — aud is a STRING (not an array) that contains CLIENT_ID as
+        // a substring but is not equal to it. A correct implementation must
+        // do element equality, not substring matching.
+        const { publicKey, privateKey } = freshKeypair();
+        const token = mintIdToken(privateKey, standardClaims({
+            aud: `${CLIENT_ID}-evil-twin`,
+        }));
+
+        // When
+        const result = verifyIdToken(token, publicKey, baseExpectations);
+
+        // Then
+        assert.equal(result.valid, false);
+        assert.equal(result.reason, 'aud');
+    });
+
+    test('2h — expired token (exp <= now) fails with reason "exp"', () => {
         // Given
         const { publicKey, privateKey } = freshKeypair();
         const token = mintIdToken(privateKey, standardClaims({ exp: NOW - 1 }));
@@ -183,7 +200,7 @@ describe('Section 2 — verifyIdToken', () => {
         assert.equal(result.reason, 'exp');
     });
 
-    test('2h — nonce mismatch fails with reason "nonce"', () => {
+    test('2i — nonce mismatch fails with reason "nonce"', () => {
         // Given
         const { publicKey, privateKey } = freshKeypair();
         const token = mintIdToken(privateKey, standardClaims({ nonce: 'a-different-nonce' }));
@@ -196,7 +213,7 @@ describe('Section 2 — verifyIdToken', () => {
         assert.equal(result.reason, 'nonce');
     });
 
-    test('2i — when expectations.nonce is absent, payload.nonce is not checked', () => {
+    test('2j — when expectations.nonce is absent, payload.nonce is not checked', () => {
         // Given
         const { publicKey, privateKey } = freshKeypair();
         const token = mintIdToken(privateKey, standardClaims({ nonce: 'something-the-rp-never-sent' }));
@@ -209,7 +226,7 @@ describe('Section 2 — verifyIdToken', () => {
         assert.equal(result.valid, true);
     });
 
-    test('2j — missing sub fails with reason "sub"', () => {
+    test('2k — missing sub fails with reason "sub"', () => {
         // Given
         const { publicKey, privateKey } = freshKeypair();
         const { sub, ...claimsWithoutSub } = standardClaims();
