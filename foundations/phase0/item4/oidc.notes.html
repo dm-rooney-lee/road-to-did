@@ -329,6 +329,247 @@
     }
     .quiz-card .answer.hidden { display: none; }
 
+    /* Step-by-step replay walkthrough */
+    .walkthrough-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 14px 0;
+        flex-wrap: wrap;
+    }
+    .walkthrough-controls button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: var(--ink);
+        color: white;
+        border: 1px solid var(--ink);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .walkthrough-controls button.secondary {
+        background: var(--panel);
+        color: var(--ink);
+    }
+    .walkthrough-controls button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    .walkthrough-controls .step-indicator {
+        font: 11px/1 ui-monospace, monospace;
+        color: var(--muted);
+        margin-left: 8px;
+    }
+
+    .phase-bar {
+        display: flex;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 8px 0 14px;
+        border: 1px solid var(--border);
+    }
+    .phase-bar .seg {
+        flex: 1;
+        background: var(--code-bg);
+    }
+    .phase-bar .seg.legit-active { background: var(--success); }
+    .phase-bar .seg.attack-active { background: var(--danger); }
+    .phase-bar .seg.done { background: var(--border); }
+
+    .walkthrough-narrative {
+        background: var(--code-bg);
+        border-left: 3px solid var(--client);
+        padding: 12px 16px;
+        margin: 12px 0;
+        border-radius: 0 4px 4px 0;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .walkthrough-narrative.legit { border-left-color: var(--success); }
+    .walkthrough-narrative.attack { border-left-color: var(--danger); }
+    .walkthrough-narrative .step-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: var(--ink);
+        font-size: 14px;
+    }
+    .walkthrough-narrative .phase-tag {
+        display: inline-block;
+        font-size: 10px;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 3px;
+        margin-right: 8px;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        vertical-align: middle;
+    }
+    .walkthrough-narrative .phase-tag.legit { background: var(--added); color: var(--success); }
+    .walkthrough-narrative .phase-tag.attack { background: #fbe9e7; color: var(--danger); }
+
+    .world-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 14px 0;
+    }
+    @media (max-width: 900px) {
+        .world-grid { grid-template-columns: 1fr; }
+    }
+    .world-box {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: white;
+        min-height: 130px;
+    }
+    .world-box h4 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 4px;
+    }
+    .world-box .empty {
+        font-style: italic;
+        color: var(--muted);
+        font-size: 11px;
+        padding: 2px 0;
+    }
+    .world-box .row {
+        font: 11px/1.5 ui-monospace, monospace;
+        margin: 4px 0;
+        padding: 3px 6px 3px 6px;
+        border-radius: 3px;
+        word-break: break-word;
+    }
+    .world-box .row.highlight {
+        background: var(--highlight);
+        border-left: 2px solid var(--warn);
+        padding-left: 6px;
+        margin-left: -6px;
+    }
+    .world-box .row.added-row {
+        background: var(--added);
+        border-left: 2px solid var(--added-border);
+        padding-left: 6px;
+        margin-left: -6px;
+    }
+    .world-box .row.danger-row {
+        background: #fbe9e7;
+        border-left: 2px solid var(--danger);
+        padding-left: 6px;
+        margin-left: -6px;
+    }
+    .world-box .row .nested {
+        display: block;
+        margin-left: 12px;
+        color: var(--muted);
+    }
+    .world-box .label {
+        color: var(--muted);
+        margin-right: 4px;
+    }
+    .world-box .who-block {
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px dashed var(--border);
+    }
+    .world-box .who-block:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    .world-box .who-block .who {
+        font: 11px/1 -apple-system, sans-serif;
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 4px;
+    }
+
+    .wire {
+        margin: 10px 0;
+        padding: 10px 14px;
+        background: #f5f0ff;
+        border: 1px dashed #c4a8e8;
+        border-radius: 4px;
+        font: 11px/1.5 ui-monospace, monospace;
+        word-break: break-all;
+    }
+    .wire .label {
+        display: block;
+        font-family: -apple-system, sans-serif;
+        font-size: 10px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+    .wire mark {
+        background: var(--highlight);
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+
+    .check-box {
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin: 12px 0;
+        background: white;
+    }
+    .check-box .compare-row {
+        font: 12px/1.7 ui-monospace, monospace;
+        padding: 2px 0;
+    }
+    .check-box .compare-row .lhs {
+        display: inline-block;
+        min-width: 26ch;
+        color: var(--muted);
+    }
+    .check-box .compare-row .rhs {
+        color: var(--ink);
+        font-weight: 600;
+    }
+    .check-box.match {
+        border-color: var(--success);
+        background: var(--added);
+    }
+    .check-box.mismatch {
+        border-color: var(--danger);
+        background: #fbe9e7;
+    }
+    .check-box .verdict-line {
+        margin-top: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        font-family: -apple-system, sans-serif;
+    }
+    .check-box.match .verdict-line { color: var(--success); }
+    .check-box.mismatch .verdict-line { color: var(--danger); }
+
+    .attacker-pouch {
+        margin: 10px 0;
+        padding: 10px 14px;
+        background: #fbe9e7;
+        border: 1px solid #f5c2bf;
+        border-radius: 4px;
+    }
+    .attacker-pouch .label {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: var(--danger);
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .attacker-pouch .token-blob {
+        font: 11px/1.5 ui-monospace, monospace;
+        word-break: break-all;
+    }
+
     /* References */
     .ref-grid {
         display: grid;
@@ -363,6 +604,7 @@
 <nav class="page-nav">
     <a href="#background">Background</a>
     <a href="#url-diff">OAuth → OIDC: the URL diff</a>
+    <a href="#walkthrough">ID Token replay walkthrough</a>
     <a href="#verifier">ID Token verifier</a>
     <a href="#references">Self-check &amp; refs</a>
 </nav>
@@ -611,6 +853,57 @@
     <p style="margin-top:6px"><strong>Two changes total:</strong> <code>openid</code> added to <code>scope</code>, and a new <code>nonce</code> parameter. Everything else is unchanged from Item 03.</p>
 
     <p style="color:var(--muted); font-size:12px"><em>What you get back is different though.</em> Without <code>openid</code>: just an access token. With <code>openid</code>: an access token AND an ID Token whose <code>nonce</code> claim equals the value you sent here.</p>
+</section>
+
+<!-- ─── Step-by-step replay walkthrough ─────────────────────────── -->
+<section class="panel" id="walkthrough">
+    <h2>🎬 ID Token replay — step by step</h2>
+    <p>Watch the entire timeline. <strong>Phase 1</strong> (steps 1–5): Alice's legitimate login — the nonce is generated by RP, sent to the OP, baked into the ID Token, then matched on the way back. <strong>Phase 2</strong> (steps 6–10): an attacker captures Alice's token and tries to replay it into a fresh login flow — the nonce mismatch blocks them.</p>
+    <p style="font-size: 12px; color: var(--muted)">Each step shows the world state: what each browser holds, what RP's server-side <code>session_store</code> contains, and what the OP knows. Watch the <span style="background:var(--highlight); padding:1px 4px; border-radius:2px">highlighted</span> rows as you advance — those are the values that change at this step.</p>
+
+    <div class="phase-bar" id="wt-phase-bar">
+        <div class="seg" data-phase="1"></div>
+        <div class="seg" data-phase="2"></div>
+        <div class="seg" data-phase="3"></div>
+        <div class="seg" data-phase="4"></div>
+        <div class="seg" data-phase="5"></div>
+        <div class="seg" data-phase="6"></div>
+        <div class="seg" data-phase="7"></div>
+        <div class="seg" data-phase="8"></div>
+        <div class="seg" data-phase="9"></div>
+        <div class="seg" data-phase="10"></div>
+    </div>
+
+    <div class="walkthrough-controls">
+        <button id="wt-prev" disabled>← Previous</button>
+        <button id="wt-next">Next →</button>
+        <button id="wt-reset" class="secondary">Reset</button>
+        <span class="step-indicator" id="wt-indicator">step 0 / 10</span>
+    </div>
+
+    <div class="walkthrough-narrative" id="wt-narrative">
+        <div class="step-title">Initial state</div>
+        <div>Empty world. Alice hasn't logged in yet. The attacker is dormant. RP's <code>session_store</code> is empty. Click <strong>Next</strong> to start Alice's legitimate login.</div>
+    </div>
+
+    <div class="world-grid">
+        <div class="world-box" id="world-browsers">
+            <h4>🧑‍💻 Browsers</h4>
+            <div class="empty">— no activity —</div>
+        </div>
+        <div class="world-box" id="world-rp">
+            <h4>🖥️ RP server</h4>
+            <div class="empty">session_store: {}</div>
+        </div>
+        <div class="world-box" id="world-op">
+            <h4>🏛️ OP</h4>
+            <div class="empty">— quiet —</div>
+        </div>
+    </div>
+
+    <div id="wt-wire"></div>
+    <div id="wt-attacker-pouch"></div>
+    <div id="wt-check"></div>
 </section>
 
 <!-- ─── Interactive verifier ───────────────────────────────────── -->
@@ -912,6 +1205,478 @@ document.getElementById('run-verify-btn').onclick = () => {
 
     document.getElementById('verify-output').innerHTML = html;
 };
+
+// ─── Step-by-step replay walkthrough ───────────────────────────
+
+const TOKEN_ALICE_SHORT = 'eyJhbGciOi…header.eyJzdWIiOiJhbGljZSIsIm5vbmNlIjoiSzEi…payload.MEUCIQDx…sig';
+
+const STEPS = [
+    // 0 — initial
+    {
+        phase: null,
+        title: 'Initial state',
+        text: 'Empty world. No browsers active. RP session_store is empty. The OP has not issued any tokens yet.',
+        browsers: [],
+        rpSessions: {},
+        op: null,
+        wire: null,
+        attackerHas: null,
+        check: null,
+    },
+
+    // ─── Phase 1: Alice's legitimate login ────────────────────────
+
+    // 1 — Alice clicks "log in"
+    {
+        phase: 1,
+        title: 'Alice clicks "log in" at RP',
+        text: 'RP\'s login handler runs server-side. It generates a fresh random nonce (call it K1), a state value (S1), and a PKCE verifier (V1). It creates a new session record keyed by a random cookie value "alice-sid", and stores those values inside it. Then it sets the HttpOnly cookie on Alice\'s browser and prepares to redirect to the OP.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'about to navigate →', highlight: 'cookies' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: 'K1',
+                expectedState: 'S1',
+                pkceVerifier: 'V1',
+                loggedInAs: '(none yet)',
+                _added: true,
+            },
+        },
+        op: null,
+        wire: null,
+        attackerHas: null,
+        check: null,
+    },
+
+    // 2 — redirect to OP
+    {
+        phase: 2,
+        title: 'RP redirects Alice\'s browser to the OP',
+        text: 'The redirect URL carries every value the OP needs: client_id, redirect_uri, scope (with "openid"), state, nonce, and the PKCE code_challenge. Note that the nonce K1 is travelling outbound — it\'s no longer secret to anyone watching the wire, but it\'s tied to Alice\'s session by the cookie + the entry in session_store.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'navigating to OP…', highlight: 'note' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: 'K1',
+                expectedState: 'S1',
+                pkceVerifier: 'V1',
+                loggedInAs: '(none yet)',
+            },
+        },
+        op: { codes: {}, label: 'awaiting auth…' },
+        wire: {
+            label: 'GET (Alice\'s browser → OP)',
+            text: 'https://op.example/authorize?client_id=rp&response_type=code&scope=<mark>openid</mark>+email&state=S1&<mark>nonce=K1</mark>&code_challenge=…',
+        },
+        attackerHas: null,
+        check: null,
+    },
+
+    // 3 — OP authenticates, issues code
+    {
+        phase: 3,
+        title: 'Alice authenticates at the OP; OP issues a code',
+        text: 'Alice types her password at the OP\'s login page. The OP authenticates her and decides her sub is "alice". It generates a one-time authorization code (ABC), and stores internally everything needed to fulfill a redemption later: sub=alice, nonce=K1 (from the auth URL), client=rp, and the PKCE code_challenge that came in the auth URL (sha256(V1)). The code itself is NOT removed yet — it lives until the RP redeems it at /token. Then OP redirects Alice\'s browser back to RP\'s callback with the code in the URL.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'returning to RP with ?code=ABC' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: 'K1',
+                expectedState: 'S1',
+                pkceVerifier: 'V1',
+                loggedInAs: '(none yet)',
+            },
+        },
+        op: {
+            codes: {
+                'ABC': { sub: 'alice', nonce: 'K1', client: 'rp', pkceChallenge: 'sha256(V1)' },
+            },
+            label: 'issued one code',
+            highlight: 'ABC',
+        },
+        wire: {
+            label: 'GET (OP → Alice\'s browser → RP callback)',
+            text: 'https://rp.example/callback?code=ABC&state=S1',
+        },
+        attackerHas: null,
+        check: null,
+    },
+
+    // 4 — RP exchanges code, gets all three tokens
+    {
+        phase: 4,
+        title: 'RP exchanges the code at /token (back-channel)',
+        text: 'RP\'s callback handler reads the session cookie, loads session.pkceVerifier = V1 from its own session_store, and POSTs server-to-server to the OP\'s /token endpoint with the code AND the verifier. The OP receives the verifier, hashes it (sha256), and compares against the code_challenge it stashed at step 3. They match — PKCE OK. The OP then mints three tokens in one response: id_token (with nonce K1 baked into the signed payload), access_token (for calling resource servers like /userinfo), refresh_token (for getting fresh access_tokens later). It marks code ABC as consumed.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'waiting on RP page render' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: 'K1',
+                expectedState: 'S1',
+                pkceVerifier: 'V1',
+                loggedInAs: '(none yet — token not verified yet)',
+                heldTokens: '{ id_token, access_token, refresh_token } — just received, not validated',
+                _highlightField: 'heldTokens',
+            },
+        },
+        op: {
+            codes: { 'ABC': { sub: 'alice', nonce: 'K1', client: 'rp', pkceChallenge: 'sha256(V1)', _consumed: true } },
+            label: 'PKCE: sha256(V1) == stored challenge ✓ → code ABC marked consumed',
+        },
+        wire: {
+            label: 'back-channel /token: RP → OP request, then OP → RP response',
+            text: '<strong>POST</strong> https://op.example/token<br>&nbsp;&nbsp;&nbsp;&nbsp;grant_type=authorization_code&code=ABC&<mark>code_verifier=V1</mark>&client_id=rp<br><br><strong>200 OK</strong> ←<br>&nbsp;&nbsp;&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"id_token":      "header.{ sub:alice, <mark>nonce:K1</mark>, aud:rp, exp:… }.sig",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"access_token":  "ya29.AbCdEf…",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"refresh_token": "1//0gXyZ…",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"token_type":    "Bearer",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"expires_in":    3600<br>&nbsp;&nbsp;&nbsp;&nbsp;}',
+        },
+        attackerHas: null,
+        check: null,
+    },
+
+    // 5 — verify: match, login succeeds; tokens stored server-side
+    {
+        phase: 5,
+        title: 'Nonce check: match → Alice is logged in',
+        text: 'RP runs the verification sequence: signature, iss, aud, exp, then nonce. The nonce check compares the value baked into the token (K1) against the value stored in this browser\'s session (K1). They match. RP sets loggedInAs=alice, clears the auth-time fields (expectedNonce/expectedState/pkceVerifier — they\'ve served their purpose), and KEEPS the access_token and refresh_token server-side so it can call /userinfo or refresh later. Alice\'s browser only holds the HttpOnly session cookie — the ID Token is discarded after verification, and the access/refresh tokens never reach the browser.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'logged in as Alice ✓ (cookie is the only credential the browser carries)' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: '(cleared — served its purpose)',
+                expectedState: '(cleared)',
+                pkceVerifier: '(cleared)',
+                loggedInAs: 'alice',
+                accessToken: 'ya29.AbCdEf…  (server-side only)',
+                refreshToken: '1//0gXyZ…  (server-side only)',
+                _highlightField: 'loggedInAs',
+            },
+        },
+        op: {
+            codes: { 'ABC': '(consumed — removed from store)' },
+            label: 'idle',
+        },
+        wire: null,
+        attackerHas: null,
+        check: {
+            tokenNonce: 'K1',
+            sessionNonce: 'K1',
+            result: 'match',
+        },
+    },
+
+    // ─── Phase 2: Attacker captures, tries to replay ──────────────
+
+    // 6 — attacker obtains Alice's ID Token
+    {
+        phase: 6,
+        title: 'Time passes — attacker obtains Alice\'s ID Token',
+        text: 'Through some leak — a misconfigured RP that logged tokens, an XSS that read the URL fragment, a malicious browser extension, a compromised access log — the attacker now possesses Alice\'s full signed ID Token. It still has Alice\'s sub, K1 as its nonce, and exp far enough in the future to be "valid by itself."',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'still logged in as alice via SID' },
+            { who: '🦹 Attacker', cookies: ['(no cookie at RP)'], note: 'has Alice\'s token in their pouch', highlight: 'note' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: '(cleared)',
+                loggedInAs: 'alice',
+            },
+        },
+        op: null,
+        wire: null,
+        attackerHas: {
+            label: 'Attacker possesses:',
+            blob: 'header.{ sub:"alice", nonce:"K1", aud:"rp", exp: (future), … }.signature(valid)',
+        },
+        check: null,
+    },
+
+    // 7 — attacker visits RP, starts fresh login
+    {
+        phase: 7,
+        title: 'Attacker starts their own login at RP',
+        text: 'The attacker visits RP in their own browser and clicks "log in." RP\'s login handler runs again — generating a brand-new nonce K2 (unrelated to K1), a new state S2, a new PKCE verifier V2 — and stores them in a NEW session record keyed by a new cookie "attacker-sid". The two sessions are completely independent records in session_store.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: 'still logged in as alice' },
+            { who: '🦹 Attacker', cookies: ['SID = attacker-sid'], note: 'fresh session at RP', highlight: 'cookies' },
+        ],
+        rpSessions: {
+            'alice-sid': {
+                expectedNonce: '(cleared)',
+                loggedInAs: 'alice',
+            },
+            'attacker-sid': {
+                expectedNonce: 'K2',
+                expectedState: 'S2',
+                pkceVerifier: 'V2',
+                loggedInAs: '(none yet)',
+                _added: true,
+            },
+        },
+        op: null,
+        wire: null,
+        attackerHas: {
+            label: 'Attacker still has:',
+            blob: 'Alice\'s token (with nonce=K1)',
+        },
+        check: null,
+    },
+
+    // 8 — attacker skips OP, crafts callback with Alice's token
+    {
+        phase: 8,
+        title: 'Attacker skips the OP, injects Alice\'s captured token into the callback',
+        text: 'Instead of following the OP redirect (which would just authenticate them as themselves and give them a token with sub=attacker), the attacker stops their browser and crafts a URL that LOOKS like a successful callback. They paste Alice\'s captured ID Token into it. They navigate their browser there — their session cookie SID=attacker-sid still goes along.',
+        browsers: [
+            { who: '👤 Alice', cookies: ['SID = alice-sid'], note: '(uninvolved)' },
+            { who: '🦹 Attacker', cookies: ['SID = attacker-sid'], note: 'navigating to forged callback…', highlight: 'note' },
+        ],
+        rpSessions: {
+            'attacker-sid': {
+                expectedNonce: 'K2',
+                expectedState: 'S2',
+                pkceVerifier: 'V2',
+                loggedInAs: '(none yet)',
+            },
+        },
+        op: null,
+        wire: {
+            label: 'attacker\'s browser → RP callback (forged)',
+            text: 'https://rp.example/callback#id_token=<mark>{ sub:alice, nonce:K1, … }.sig</mark>&state=S2',
+        },
+        attackerHas: {
+            label: 'in flight',
+            blob: 'Alice\'s captured token, now arriving at RP\'s callback',
+        },
+        check: null,
+    },
+
+    // 9 — callback runs: look up session, parse token
+    {
+        phase: 9,
+        title: 'Callback handler runs in the attacker\'s session',
+        text: 'RP\'s callback handler reads the incoming request\'s cookie SID=attacker-sid and looks up THAT session — which has expectedNonce=K2 stored. It then parses the injected ID Token. Signature passes (it\'s a real OP-signed token). aud passes (it was for rp). exp passes (still in the future). Then the nonce check.',
+        browsers: [
+            { who: '🦹 Attacker', cookies: ['SID = attacker-sid'], note: 'waiting on callback response' },
+        ],
+        rpSessions: {
+            'attacker-sid': {
+                expectedNonce: 'K2',
+                expectedState: 'S2',
+                pkceVerifier: 'V2',
+                loggedInAs: '(none yet)',
+                _highlightField: 'expectedNonce',
+            },
+        },
+        op: null,
+        wire: null,
+        attackerHas: {
+            label: 'RP is now inspecting:',
+            blob: 'token.payload.nonce = K1   (baked in, can\'t be modified without breaking the signature)',
+        },
+        check: null,
+    },
+
+    // 10 — mismatch → reject
+    {
+        phase: 10,
+        title: 'Nonce mismatch → REJECT',
+        text: 'The single line `if (idToken.payload.nonce !== session.expectedNonce) return reject("nonce")` fires. K1 ≠ K2. Rejection. The attacker\'s session never gets loggedInAs=alice. They are not logged in as anyone. The attack stops here.',
+        browsers: [
+            { who: '🦹 Attacker', cookies: ['SID = attacker-sid'], note: 'callback returned error: nonce mismatch', highlight: 'note', danger: true },
+        ],
+        rpSessions: {
+            'attacker-sid': {
+                expectedNonce: 'K2',
+                expectedState: 'S2',
+                pkceVerifier: 'V2',
+                loggedInAs: '(REJECTED — still none)',
+                _highlightField: 'loggedInAs',
+                _danger: true,
+            },
+        },
+        op: null,
+        wire: null,
+        attackerHas: null,
+        check: {
+            tokenNonce: 'K1',
+            sessionNonce: 'K2',
+            result: 'mismatch',
+        },
+    },
+];
+
+let wtIdx = 0;
+
+function renderWalkthrough() {
+    const step = STEPS[wtIdx];
+
+    // Phase bar
+    document.querySelectorAll('#wt-phase-bar .seg').forEach((seg, i) => {
+        const phaseNum = i + 1;
+        seg.classList.remove('legit-active', 'attack-active', 'done');
+        if (phaseNum < wtIdx) {
+            seg.classList.add('done');
+        } else if (phaseNum === wtIdx) {
+            seg.classList.add(phaseNum <= 5 ? 'legit-active' : 'attack-active');
+        }
+    });
+
+    // Indicator
+    document.getElementById('wt-indicator').textContent = `step ${wtIdx} / 10`;
+
+    // Buttons
+    document.getElementById('wt-prev').disabled = wtIdx === 0;
+    document.getElementById('wt-next').disabled = wtIdx === STEPS.length - 1;
+
+    // Narrative
+    const narr = document.getElementById('wt-narrative');
+    narr.classList.remove('legit', 'attack');
+    if (step.phase !== null && step.phase <= 5) narr.classList.add('legit');
+    else if (step.phase !== null && step.phase > 5) narr.classList.add('attack');
+    const phaseTag = step.phase === null ? '' :
+        step.phase <= 5
+            ? `<span class="phase-tag legit">Phase 1 · Legit</span>`
+            : `<span class="phase-tag attack">Phase 2 · Attack</span>`;
+    narr.innerHTML = `
+        <div class="step-title">${phaseTag}${step.title}</div>
+        <div>${step.text}</div>
+    `;
+
+    // Browsers panel
+    const browsersBox = document.getElementById('world-browsers');
+    if (!step.browsers || step.browsers.length === 0) {
+        browsersBox.innerHTML = '<h4>🧑‍💻 Browsers</h4><div class="empty">— no activity —</div>';
+    } else {
+        let html = '<h4>🧑‍💻 Browsers</h4>';
+        for (const b of step.browsers) {
+            html += `<div class="who-block"><div class="who">${b.who}</div>`;
+            for (const c of b.cookies) {
+                const cls = b.highlight === 'cookies' ? 'row highlight' : 'row';
+                html += `<div class="${cls}">${c}</div>`;
+            }
+            const noteCls = b.highlight === 'note'
+                ? (b.danger ? 'row danger-row' : 'row highlight')
+                : 'row';
+            html += `<div class="${noteCls}"><span class="label">// </span>${b.note}</div>`;
+            html += '</div>';
+        }
+        browsersBox.innerHTML = html;
+    }
+
+    // RP panel
+    const rpBox = document.getElementById('world-rp');
+    if (!step.rpSessions || Object.keys(step.rpSessions).length === 0) {
+        rpBox.innerHTML = '<h4>🖥️ RP server</h4><div class="empty">session_store: {}</div>';
+    } else {
+        let html = '<h4>🖥️ RP server</h4><div class="row"><span class="label">session_store:</span></div>';
+        for (const [sid, fields] of Object.entries(step.rpSessions)) {
+            const rowCls = fields._added ? 'row added-row' : (fields._danger ? 'row danger-row' : 'row');
+            html += `<div class="${rowCls}">"${sid}": {`;
+            for (const [k, v] of Object.entries(fields)) {
+                if (k.startsWith('_')) continue;
+                const fieldCls = fields._highlightField === k
+                    ? (fields._danger ? 'nested' : 'nested')
+                    : 'nested';
+                const highlightStyle = fields._highlightField === k
+                    ? (fields._danger ? 'background: #fbe9e7; color: var(--danger); font-weight: 600;'
+                                      : 'background: var(--highlight); color: var(--ink); font-weight: 600;')
+                    : '';
+                html += `<span class="${fieldCls}" style="${highlightStyle}">${k}: ${v}</span>`;
+            }
+            html += `<span class="nested">}</span></div>`;
+        }
+        rpBox.innerHTML = html;
+    }
+
+    // OP panel
+    const opBox = document.getElementById('world-op');
+    if (!step.op) {
+        opBox.innerHTML = '<h4>🏛️ OP</h4><div class="empty">— quiet —</div>';
+    } else {
+        let html = '<h4>🏛️ OP</h4>';
+        html += `<div class="row"><span class="label">// </span>${step.op.label}</div>`;
+        if (step.op.codes && Object.keys(step.op.codes).length > 0) {
+            html += '<div class="row"><span class="label">codes:</span></div>';
+            for (const [code, info] of Object.entries(step.op.codes)) {
+                const cls = step.op.highlight === code ? 'row highlight' : 'row';
+                if (typeof info === 'string') {
+                    html += `<div class="${cls}">"${code}": ${info}</div>`;
+                } else {
+                    html += `<div class="${cls}">"${code}": { sub: "${info.sub}", nonce: "${info.nonce}"${info._consumed ? ', (consumed)' : ''} }</div>`;
+                }
+            }
+        }
+        opBox.innerHTML = html;
+    }
+
+    // Wire
+    const wireBox = document.getElementById('wt-wire');
+    if (step.wire) {
+        wireBox.innerHTML = `
+            <div class="wire">
+                <span class="label">${step.wire.label}</span>
+                ${step.wire.text}
+            </div>
+        `;
+    } else {
+        wireBox.innerHTML = '';
+    }
+
+    // Attacker pouch
+    const pouchBox = document.getElementById('wt-attacker-pouch');
+    if (step.attackerHas) {
+        pouchBox.innerHTML = `
+            <div class="attacker-pouch">
+                <div class="label">🦹 ${step.attackerHas.label}</div>
+                <div class="token-blob">${step.attackerHas.blob}</div>
+            </div>
+        `;
+    } else {
+        pouchBox.innerHTML = '';
+    }
+
+    // Check box
+    const checkBox = document.getElementById('wt-check');
+    if (step.check) {
+        const cls = step.check.result === 'match' ? 'match' : 'mismatch';
+        const icon = step.check.result === 'match' ? '✓' : '✗';
+        const verdict = step.check.result === 'match'
+            ? 'MATCH → accept, complete login'
+            : 'MISMATCH → reject(\'nonce\')';
+        checkBox.innerHTML = `
+            <div class="check-box ${cls}">
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600;">Nonce check</div>
+                <div class="compare-row"><span class="lhs">idToken.payload.nonce</span> = <span class="rhs">"${step.check.tokenNonce}"</span></div>
+                <div class="compare-row"><span class="lhs">session.expectedNonce</span> = <span class="rhs">"${step.check.sessionNonce}"</span></div>
+                <div class="verdict-line">${icon} ${verdict}</div>
+            </div>
+        `;
+    } else {
+        checkBox.innerHTML = '';
+    }
+}
+
+document.getElementById('wt-next').onclick = () => {
+    if (wtIdx < STEPS.length - 1) {
+        wtIdx++;
+        renderWalkthrough();
+    }
+};
+document.getElementById('wt-prev').onclick = () => {
+    if (wtIdx > 0) {
+        wtIdx--;
+        renderWalkthrough();
+    }
+};
+document.getElementById('wt-reset').onclick = () => {
+    wtIdx = 0;
+    renderWalkthrough();
+};
+
+renderWalkthrough();
 
 </script>
 </body>

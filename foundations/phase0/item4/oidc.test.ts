@@ -69,9 +69,9 @@ describe('Section 1 — mintIdToken', () => {
 
         // When
         const token = mintIdToken(privateKey, claims);
-        const { payload } = verifyJwsCompact(token, publicKey, 'ES256');
 
         // Then
+        const { payload } = verifyJwsCompact(token, publicKey, 'ES256');
         assert.deepEqual(payload, claims);
     });
 
@@ -81,9 +81,9 @@ describe('Section 1 — mintIdToken', () => {
 
         // When
         const token = mintIdToken(privateKey, standardClaims());
-        const { valid } = verifyJwsCompact(token, publicKey, 'ES256');
 
         // Then
+        const { valid } = verifyJwsCompact(token, publicKey, 'ES256');
         assert.equal(valid, true);
     });
 });

@@ -12,6 +12,7 @@
  */
 
 import {type KeyObject} from 'node:crypto';
+import {encodeJwsCompact, verifyJwsCompact} from "../item2/jwt.ts";
 
 function TODO(label: string): never {
     throw new Error(`TODO — ${label} not implemented`);
@@ -50,7 +51,9 @@ export function mintIdToken(
     privateKey: KeyObject,
     claims: Record<string, unknown>,
 ): string {
-    return TODO('mintIdToken');
+    const header = {alg: 'ES256', typ: 'JWT'} as const;
+    const jwsCompact = encodeJwsCompact(header, claims, privateKey);
+    return jwsCompact.token;
 }
 
 // ============================================================
@@ -109,7 +112,30 @@ export function verifyIdToken(
     publicKey: KeyObject,
     expectations: IdTokenExpectations,
 ): IdTokenVerifyResult {
-    return TODO('verifyIdToken');
+    const { valid, header, payload } = verifyJwsCompact(idToken, publicKey, 'ES256');
+    if (!valid) {
+        return {
+            valid: false,
+            claims: payload,
+            reason: 'signature',
+        };
+    }
+
+    const { iss, aud, exp, nonce, sub } = payload;
+    const { issuer: expectedIssuer, audience: expectedAudience, nonce: expectedNonce, now } = expectations;
+
+    let reason: 'signature' | 'iss' | 'aud' | 'exp' | 'nonce' | 'sub' | undefined;
+    if (iss !== expectedIssuer) reason = 'iss';
+    if (!(aud as string).includes(expectedAudience)) reason = 'aud';
+    if ((exp as number) <= now) reason = 'exp';
+    if (expectedNonce !== undefined && nonce !== expectedNonce) reason = 'nonce';
+    if (sub === undefined || sub === '') reason = 'sub';
+
+    return {
+        valid: reason === undefined,
+        claims: payload,
+        reason: reason,
+    };
 }
 
 // ============================================================
@@ -149,7 +175,17 @@ export function buildOidcAuthorizationUrl(
         codeChallenge: string;
     },
 ): string {
-    return TODO('buildOidcAuthorizationUrl');
+    const queryParams = new URLSearchParams({
+        response_type: 'code',
+        client_id: params.clientId,
+        redirect_uri: params.redirectUri,
+        scope: params.scope,
+        state: params.state,
+        nonce: params.nonce,
+        code_challenge: params.codeChallenge,
+        code_challenge_method: 'S256',
+    });
+    return `${authEndpoint}?${queryParams}`;
 }
 
 // ============================================================
