@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phase 1 / Item 01 — W3C Verifiable Credential Data Model 2.0</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --issuer:  #c8332b;
+        --holder:  #d4a017;
+        --verifier:#2e8b57;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+        --vc-field: #1e6fff;
+        --jwt-claim: #6f3eb8;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.6 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 6px 0;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+
+    .page-nav {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+
+    .bg-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin: 4px 0 14px;
+        flex-wrap: wrap;
+    }
+    .bg-tab-button {
+        padding: 8px 14px;
+        font: 13px/1 -apple-system, sans-serif;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        color: var(--muted);
+        position: relative;
+        top: 1px;
+    }
+    .bg-tab-button.active {
+        color: var(--ink);
+        border-color: var(--border);
+        border-bottom-color: var(--panel);
+        background: var(--panel);
+        border-radius: 4px 4px 0 0;
+        font-weight: 600;
+    }
+    .bg-tab-content { display: none; }
+    .bg-tab-content.active { display: block; }
+
+    /* Trust triangle */
+    .trust-triangle {
+        position: relative;
+        height: 320px;
+        margin: 16px 0;
+    }
+    .triangle-role {
+        position: absolute;
+        width: 200px;
+        padding: 14px 16px;
+        background: white;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .triangle-role h4 { margin: 0 0 4px; font-size: 13px; }
+    .triangle-role .body { font-size: 11px; line-height: 1.5; color: var(--muted); }
+    .triangle-role.issuer   { top: 0;   left: 50%; transform: translateX(-50%); border-color: var(--issuer); }
+    .triangle-role.holder   { bottom: 0; left: 0; border-color: var(--holder); }
+    .triangle-role.verifier { bottom: 0; right: 0; border-color: var(--verifier); }
+    .triangle-role .role-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .triangle-role.issuer   .role-label { color: var(--issuer); }
+    .triangle-role.holder   .role-label { color: var(--holder); }
+    .triangle-role.verifier .role-label { color: var(--verifier); }
+
+    .triangle-arrow {
+        position: absolute;
+        font-size: 11px;
+        color: var(--muted);
+        font-style: italic;
+    }
+    .triangle-arrow.iss-hold { top: 110px; left: 130px; transform: rotate(40deg); }
+    .triangle-arrow.hold-ver { bottom: 35px; left: 50%; transform: translateX(-50%); }
+    .triangle-arrow.ver-iss  { top: 110px; right: 130px; transform: rotate(-40deg); }
+    .triangle-arrow .arrow-label {
+        background: var(--bg);
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+
+    @media (max-width: 760px) {
+        .trust-triangle { height: auto; display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .triangle-role { position: static; transform: none; width: auto; }
+        .triangle-arrow { display: none; }
+    }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .concept-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .concept-card h4 { margin: 0 0 4px; }
+    .concept-card .tagline {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 8px;
+    }
+    .concept-card .body { font-size: 12px; line-height: 1.5; }
+
+    table.field-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 13px;
+    }
+    .field-table th, .field-table td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .field-table th { background: var(--code-bg); font-weight: 600; }
+    .field-table .required-row { background: #fff9e6; }
+    .field-table code { font-size: 11px; }
+
+    /* VC builder */
+    .builder-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 12px 0;
+    }
+    @media (max-width: 760px) {
+        .builder-grid { grid-template-columns: 1fr; }
+    }
+    .builder-field { margin-bottom: 10px; }
+    .builder-field label {
+        font-size: 11px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .builder-field input, .builder-field textarea {
+        width: 100%;
+        font: 12px/1.5 ui-monospace, monospace;
+        padding: 6px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: white;
+    }
+    .builder-field textarea { min-height: 80px; resize: vertical; }
+
+    .builder-output {
+        font: 11px/1.5 ui-monospace, monospace;
+        background: var(--code-bg);
+        padding: 12px 14px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 480px;
+        overflow-y: auto;
+    }
+    .builder-output .vc-field { color: var(--vc-field); font-weight: 600; }
+    .builder-output .string { color: var(--success); }
+    .builder-output .punct { color: var(--muted); }
+
+    /* VC-JWT side-by-side */
+    .side-by-side {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 14px 0;
+    }
+    @media (max-width: 760px) {
+        .side-by-side { grid-template-columns: 1fr; }
+    }
+    .side-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px;
+    }
+    .side-card h4 { margin: 0 0 8px; font-size: 13px; }
+    .side-card .label {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-bottom: 8px;
+    }
+    .side-card.vc .label { background: #e7f0ff; color: var(--vc-field); }
+    .side-card.vcjwt .label { background: #efe5ff; color: var(--jwt-claim); }
+    .side-card pre {
+        margin: 0;
+        font-size: 11px;
+        background: var(--code-bg);
+    }
+    .mapping-list {
+        margin: 14px 0;
+        font-size: 12px;
+    }
+    .mapping-list .map-row {
+        display: grid;
+        grid-template-columns: 1fr 30px 1fr;
+        align-items: center;
+        padding: 4px 0;
+        font-family: ui-monospace, monospace;
+    }
+    .mapping-list .map-row .from { text-align: right; color: var(--vc-field); }
+    .mapping-list .map-row .arrow { text-align: center; color: var(--muted); }
+    .mapping-list .map-row .to { color: var(--jwt-claim); }
+    .mapping-list .map-row.muted .from,
+    .mapping-list .map-row.muted .to { color: var(--muted); font-style: italic; }
+
+    /* Comparison table */
+    .compare-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 14px 0;
+    }
+    @media (max-width: 760px) {
+        .compare-grid { grid-template-columns: 1fr; }
+    }
+    .compare-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px;
+    }
+    .compare-card h4 { margin: 0 0 8px; font-size: 14px; }
+    .compare-card.envelope { border-left: 3px solid var(--vc-field); }
+    .compare-card.embedded { border-left: 3px solid var(--jwt-claim); }
+    .compare-card ul { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; }
+
+    /* Quiz */
+    .quiz-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .quiz-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 14px 16px;
+        background: white;
+    }
+    .quiz-card .question { font-weight: 600; margin: 0 0 10px; font-size: 13px; }
+    .reveal-btn {
+        padding: 5px 12px;
+        font: 11px/1 -apple-system, sans-serif;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .reveal-btn:hover { background: var(--code-bg); color: var(--ink); }
+    .quiz-card .answer {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff4d0;
+        border-left: 3px solid var(--warn);
+        border-radius: 0 4px 4px 0;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .quiz-card .answer.hidden { display: none; }
+
+    /* References */
+    .ref-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .ref-card {
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        text-decoration: none;
+        color: var(--ink);
+        transition: transform 100ms;
+    }
+    .ref-card:hover { transform: translateY(-2px); border-color: var(--vc-field); }
+    .ref-card strong { display: block; color: var(--vc-field); font-size: 13px; }
+    .ref-card .ref-title { font-size: 13px; margin: 2px 0; font-weight: 500; }
+    .ref-card small { color: var(--muted); font-size: 11px; display: block; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+    <h1>Phase 1 / Item 01 — W3C Verifiable Credential Data Model 2.0</h1>
+    <p>Phase 0 built the primitives (signing, JWS, OIDC). Phase 1 starts layering W3C identity standards on top. The first artifact: a <strong>Verifiable Credential</strong> — a structured JSON document an issuer signs and a verifier later checks. This lab implements VCs in their VC-JWT form, the simplest of the two securing mechanisms VCDM (Verifiable Credential Data Model) 2.0 supports.</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#background">Background</a>
+    <a href="#builder">VC builder</a>
+    <a href="#vcjwt-map">VC → VC-JWT mapping</a>
+    <a href="#securing">Securing comparison</a>
+    <a href="#references">Self-check &amp; refs</a>
+</nav>
+
+<!-- ─── Background ─────────────────────────────────────────────── -->
+<section class="panel" id="background">
+    <h2>Background — read first</h2>
+
+    <div class="bg-tabs">
+        <button class="bg-tab-button active" data-bg="triangle">Trust triangle</button>
+        <button class="bg-tab-button" data-bg="anatomy">VC anatomy</button>
+        <button class="bg-tab-button" data-bg="securing">Securing mechanisms</button>
+        <button class="bg-tab-button" data-bg="context">@context / JSON-LD</button>
+    </div>
+
+    <!-- Tab: triangle -->
+    <div class="bg-tab-content active" id="bg-triangle">
+        <h3>The Issuer / Holder / Verifier triangle</h3>
+        <p>SSI (Self-Sovereign Identity)'s foundational diagram. Three roles, three different responsibilities, and a credential that travels through all of them.</p>
+
+        <div class="trust-triangle">
+            <div class="triangle-role issuer">
+                <div class="role-label">Issuer</div>
+                <h4>The party with authority</h4>
+                <div class="body">University, government, employer. Signs the credential with its private key. Publishes its public key so verifiers can check signatures later.</div>
+            </div>
+            <div class="triangle-role holder">
+                <div class="role-label">Holder</div>
+                <h4>The party holding the credential</h4>
+                <div class="body">Usually the end-user via a wallet app. Stores credentials, decides when to present them to which verifier.</div>
+            </div>
+            <div class="triangle-role verifier">
+                <div class="role-label">Verifier</div>
+                <h4>The party that consumes the credential</h4>
+                <div class="body">Employer checking degree, store checking age. Fetches issuer's public key, verifies signature, decides whether to trust.</div>
+            </div>
+            <div class="triangle-arrow iss-hold"><span class="arrow-label">issue → ↘</span></div>
+            <div class="triangle-arrow hold-ver"><span class="arrow-label">present →</span></div>
+            <div class="triangle-arrow ver-iss"><span class="arrow-label">↖ fetch public key</span></div>
+        </div>
+
+        <h3>What changes vs OIDC</h3>
+        <p>In OIDC (Phase 0 Item 04), the OP is online during every login. The RP talks directly to the OP, the OP authenticates the user, the OP issues a token, the RP verifies. Two parties, both online.</p>
+        <p>In VC, the issuer is online only at issuance time. After that:</p>
+        <ul style="font-size: 13px">
+            <li>The credential lives in the holder's wallet</li>
+            <li>The holder presents it to verifiers without involving the issuer</li>
+            <li>The verifier only needs the issuer's <em>public key</em>, not a live connection to the issuer</li>
+        </ul>
+        <p>That's what "decentralized" means here: the trust chain (issuer's signature + public key lookup) replaces the live connection. Useful for credentials that need to work offline (mDL at a bar) or across organizational boundaries (university → employer).</p>
+    </div>
+
+    <!-- Tab: anatomy -->
+    <div class="bg-tab-content" id="bg-anatomy">
+        <h3>The minimal VC, field by field</h3>
+        <p>Per W3C VC Data Model 2.0. Required fields are highlighted.</p>
+
+        <pre>{
+  "@context":          ["https://www.w3.org/ns/credentials/v2"],
+  "id":                "urn:uuid:..." ,
+  "type":              ["VerifiableCredential", "UniversityDegreeCredential"],
+  "issuer":            "did:example:university",
+  "validFrom":         "2026-09-01T00:00:00Z",
+  "validUntil":        "2031-09-01T00:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:alice",
+    "degreeType": "BachelorDegree",
+    "name": "Alice Doe"
+  }
+}</pre>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Field</th><th>Required?</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr class="required-row">
+                    <td><code>@context</code></td>
+                    <td>Required</td>
+                    <td>Array. First element MUST be <code>"https://www.w3.org/ns/credentials/v2"</code>. Defines the semantic meaning of every other field (see <strong>JSON-LD</strong> tab).</td>
+                </tr>
+                <tr>
+                    <td><code>id</code></td>
+                    <td>Optional</td>
+                    <td>Identifier for THIS credential instance. Typically a URN UUID. Allows referencing a specific credential (for revocation, storage keys, etc.).</td>
+                </tr>
+                <tr class="required-row">
+                    <td><code>type</code></td>
+                    <td>Required</td>
+                    <td>Array. MUST contain <code>"VerifiableCredential"</code>. Additional types (like <code>"UniversityDegreeCredential"</code>) describe what kind of credential this is — for routing, validation, display.</td>
+                </tr>
+                <tr class="required-row">
+                    <td><code>issuer</code></td>
+                    <td>Required</td>
+                    <td>Identifier of the party that issued the credential. Usually a DID URL (<code>did:example:...</code>) or an HTTPS URL. The verifier uses this to look up the issuer's public key.</td>
+                </tr>
+                <tr>
+                    <td><code>validFrom</code></td>
+                    <td>Optional</td>
+                    <td>ISO 8601 datetime. Credential is not valid before this. (VCDM 1.x called this <code>issuanceDate</code>.)</td>
+                </tr>
+                <tr>
+                    <td><code>validUntil</code></td>
+                    <td>Optional</td>
+                    <td>ISO 8601 datetime. Credential expires at this point. (VCDM 1.x called this <code>expirationDate</code>.)</td>
+                </tr>
+                <tr class="required-row">
+                    <td><code>credentialSubject</code></td>
+                    <td>Required</td>
+                    <td>Object. The actual claims about the subject. <code>id</code> identifies the subject (typically a DID); other fields are the issuer's assertions about them.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="concept-card" style="margin-top:14px; border-left: 3px solid var(--warn);">
+            <h4>Subject vs Holder</h4>
+            <div class="body">
+                <strong>Subject</strong> is who the credential is ABOUT — the person whose degree, age, or identity is being asserted. Identified by <code>credentialSubject.id</code>.<br><br>
+                <strong>Holder</strong> is who currently HOLDS the credential. Usually the subject (you hold your own driver's license). But not always — a parent could hold a child's vaccination record; an employer could hold credentials issued to its employees. In those cases the holder ≠ subject, and the holder proves authorization via Verifiable Presentations (Phase 2 material).
+            </div>
+        </div>
+
+        <div class="concept-card" style="margin-top:10px; border-left: 3px solid var(--warn);">
+            <h4>Optional fields you'll meet later</h4>
+            <div class="body">
+                <code>credentialStatus</code> (revocation pointers — Phase 4), <code>credentialSchema</code> (data shape validation), <code>refreshService</code> (how to get a fresh credential), <code>termsOfUse</code> (issuer's policy constraints), <code>evidence</code> (proof the issuer collected to back the claim). Not in this lab's scope.
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: securing -->
+    <div class="bg-tab-content" id="bg-securing">
+        <h3>Two securing mechanisms, same proof</h3>
+        <p>VCDM 2.0 separates "what's in a credential" from "how it's signed." Two separate specs handle the signing part:</p>
+
+        <div class="compare-grid">
+            <div class="compare-card envelope">
+                <h4>Enveloping (VC-JWT)</h4>
+                <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">What this lab builds</div>
+                <p>The credential JSON is wrapped INSIDE a signed envelope (a JWS). Wire format is <code>header.payload.signature</code>. The signature is OUTSIDE the credential — the credential lives in the payload as the <code>vc</code> claim.</p>
+                <strong>Properties:</strong>
+                <ul>
+                    <li>Builds on JOSE — same infrastructure as OIDC ID Tokens</li>
+                    <li>No JSON-LD processing required to verify</li>
+                    <li>Standardized in <em>Securing VCs with JOSE and COSE</em> (W3C)</li>
+                    <li>Used by SD-JWT VC, OpenID4VC, EUDI Wallet (JSON path)</li>
+                </ul>
+            </div>
+
+            <div class="compare-card embedded">
+                <h4>Embedded (Data Integrity)</h4>
+                <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Lab covers in Lesson 2 only</div>
+                <p>The credential JSON has a <code>proof</code> field added INSIDE it. Signature computed over a canonicalized form of the credential (minus the proof field). Verify by canonicalizing the same way and checking the signature.</p>
+                <strong>Properties:</strong>
+                <ul>
+                    <li>Credential remains plain JSON-LD; no unwrapping needed to read</li>
+                    <li>Supports multiple proofs natively (multi-issuer, key rotation)</li>
+                    <li>Requires JSON-LD canonicalization (URDNA2015)</li>
+                    <li>Used by Sphereon, walt.id (older), some linked-data deployments</li>
+                </ul>
+            </div>
+        </div>
+
+        <p style="margin-top: 10px"><strong>Both produce a valid VCDM 2.0 credential.</strong> They're not interchangeable on the wire — a VC-JWT and an embedded-proof VC look completely different — but they both convey the same trust claim: "the issuer signed this credential." The choice depends on the ecosystem you're integrating with.</p>
+    </div>
+
+    <!-- Tab: context -->
+    <div class="bg-tab-content" id="bg-context">
+        <h3>What <code>@context</code> actually does</h3>
+        <p><code>@context</code> is a JSON-LD construct. JSON-LD ("JSON for Linked Data") gives JSON documents global, unambiguous meaning by mapping short field names to full IRIs (URLs).</p>
+
+        <p>The W3C VC v2 context (<code>https://www.w3.org/ns/credentials/v2</code>) defines what every standard VC field means in terms of RDF triples. With it, a credential is interpretable not just as "a JSON object" but as a graph of semantic facts — a JSON-LD processor can expand the credential into its full IRI form.</p>
+
+        <h3>For VC-JWT processing, you almost never need to do that expansion</h3>
+        <p>The verifier reads the credential as plain JSON, checks the standard fields (<code>issuer</code>, <code>credentialSubject</code>, etc.), and trusts that the context field's presence indicates VCDM compliance. JSON-LD machinery matters only when:</p>
+        <ul style="font-size: 13px">
+            <li>A verifier is performing Data Integrity verification (which canonicalizes the credential as RDF)</li>
+            <li>A system is doing semantic-web-style reasoning over credentials</li>
+            <li>A credential uses extension types (custom claim vocabularies) that need resolving</li>
+        </ul>
+
+        <div class="concept-card" style="margin-top:14px; border-left: 3px solid var(--warn);">
+            <h4>Practical takeaway</h4>
+            <div class="body">Include <code>@context</code> because the spec mandates it and verifiers may reject credentials without it. Don't worry about the JSON-LD machinery at the byte level until you meet Data Integrity proofs or selective disclosure in Phase 2.</div>
+        </div>
+
+        <h3>What it looks like when expanded</h3>
+        <p>Just for visceral effect — this is what a JSON-LD processor sees:</p>
+        <pre>// Compact form (what's in the credential):
+{
+  "@context": ["https://www.w3.org/ns/credentials/v2"],
+  "issuer":   "did:example:university",
+  "credentialSubject": { "id": "did:example:alice", "name": "Alice" }
+}
+
+// Expanded form (after JSON-LD processing — what an RDF engine sees):
+{
+  "https://www.w3.org/2018/credentials#issuer": [
+    { "@id": "did:example:university" }
+  ],
+  "https://www.w3.org/2018/credentials#credentialSubject": [{
+    "@id": "did:example:alice",
+    "http://schema.org/name": [ { "@value": "Alice" } ]
+  }]
+}</pre>
+        <p>You don't need to write code that does this expansion for VC-JWT. But you can see why the linked-data folks like it: every field maps to a globally-unique IRI, so credentials from different vocabularies can be mixed without naming collisions.</p>
+    </div>
+</section>
+
+<!-- ─── VC builder ─────────────────────────────────────────────── -->
+<section class="panel" id="builder">
+    <h2>🔨 VC builder</h2>
+    <p>Fill in the fields below; watch the VC JSON build up in real time. This is exactly what <code>buildVerifiableCredential</code> produces.</p>
+
+    <div class="builder-grid">
+        <div>
+            <div class="builder-field">
+                <label>additional @context URLs (one per line; v2 is always first)</label>
+                <textarea id="bld-context" style="min-height: 50px">https://www.w3.org/2018/credentials/examples/v1</textarea>
+            </div>
+            <div class="builder-field">
+                <label>additional type</label>
+                <input id="bld-type" value="UniversityDegreeCredential">
+            </div>
+            <div class="builder-field">
+                <label>issuer DID</label>
+                <input id="bld-issuer" value="did:example:university">
+            </div>
+            <div class="builder-field">
+                <label>validFrom (ISO 8601)</label>
+                <input id="bld-from" value="2026-09-01T00:00:00Z">
+            </div>
+            <div class="builder-field">
+                <label>validUntil (ISO 8601)</label>
+                <input id="bld-until" value="2031-09-01T00:00:00Z">
+            </div>
+            <div class="builder-field">
+                <label>credentialSubject (JSON; include the subject's <code>id</code>)</label>
+                <textarea id="bld-claims">{
+  "id": "did:example:alice",
+  "degreeType": "BachelorDegree",
+  "name": "Alice Doe"
+}</textarea>
+            </div>
+        </div>
+        <div>
+            <label style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px;">Resulting VC JSON</label>
+            <div class="builder-output" id="bld-output"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ─── VC → VC-JWT mapping ────────────────────────────────────── -->
+<section class="panel" id="vcjwt-map">
+    <h2>📑 VC → VC-JWT mapping</h2>
+    <p>How <code>signCredentialAsVcJwt</code> turns a VC JSON object into a JWT payload. The JWT carries both the original credential (under <code>vc</code>) AND the standard JWT claims (<code>iss</code>, <code>sub</code>, <code>nbf</code>, <code>exp</code>, <code>jti</code>) — duplication is intentional so plain-JWT verifiers can process expiry and issuer without understanding VCs.</p>
+
+    <div class="side-by-side">
+        <div class="side-card vc">
+            <div class="label">VC (input)</div>
+            <h4>credential</h4>
+            <pre>{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2"
+  ],
+  "id": "urn:uuid:abc...",
+  "type": [
+    "VerifiableCredential",
+    "UniversityDegreeCredential"
+  ],
+  "issuer": "did:example:university",
+  "validFrom":  "2026-09-01T00:00:00Z",
+  "validUntil": "2031-09-01T00:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:alice",
+    "degreeType": "BachelorDegree",
+    "name": "Alice Doe"
+  }
+}</pre>
+        </div>
+        <div class="side-card vcjwt">
+            <div class="label">VC-JWT payload</div>
+            <h4>JWT payload (signed)</h4>
+            <pre>{
+  "iss": "did:example:university",
+  "sub": "did:example:alice",
+  "jti": "urn:uuid:abc...",
+  "nbf": 1788307200,    // unix sec of validFrom
+  "exp": 1946073600,    // unix sec of validUntil
+  "vc":  &lt;the entire credential above&gt;
+}</pre>
+        </div>
+    </div>
+
+    <h3>The field map at a glance</h3>
+    <div class="mapping-list">
+        <div class="map-row">
+            <span class="from">credential.issuer</span>
+            <span class="arrow">→</span>
+            <span class="to">payload.iss</span>
+        </div>
+        <div class="map-row">
+            <span class="from">credential.credentialSubject.id</span>
+            <span class="arrow">→</span>
+            <span class="to">payload.sub</span>
+        </div>
+        <div class="map-row">
+            <span class="from">credential.id</span>
+            <span class="arrow">→</span>
+            <span class="to">payload.jti</span>
+        </div>
+        <div class="map-row">
+            <span class="from">credential.validFrom  → unix sec</span>
+            <span class="arrow">→</span>
+            <span class="to">payload.nbf</span>
+        </div>
+        <div class="map-row">
+            <span class="from">credential.validUntil → unix sec</span>
+            <span class="arrow">→</span>
+            <span class="to">payload.exp</span>
+        </div>
+        <div class="map-row">
+            <span class="from">credential</span>
+            <span class="arrow">→</span>
+            <span class="to">payload.vc (whole object)</span>
+        </div>
+    </div>
+
+    <p style="font-size: 12px; color: var(--muted)"><em>The two date conversions are the only non-trivial step. <code>validFrom</code> is an ISO 8601 string in the VC; <code>nbf</code> is a Unix-seconds integer in the JWT. Use <code>Math.floor(Date.parse(...) / 1000)</code>.</em></p>
+</section>
+
+<!-- ─── Securing comparison ────────────────────────────────────── -->
+<section class="panel" id="securing">
+    <h2>🪪 What gets signed: enveloping vs embedded</h2>
+    <p>Same credential, two different ways of attaching a signature. The wire bytes look totally different; the trust property is the same.</p>
+
+    <div class="side-by-side">
+        <div class="side-card vc">
+            <div class="label">VC-JWT (enveloping)</div>
+            <h4>Signature wraps the credential</h4>
+            <pre>eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOi4uLi4uLnZjOnsuLi59fQ.MEUCIQ...sig
+
+      ▲ JWS header   ▲ payload contains
+                       the credential
+                       inside the "vc" claim   ▲ signature</pre>
+            <p style="font-size: 12px; margin-top: 8px">Verifier parses the JWS, extracts <code>payload.vc</code> as the credential, checks the signature over the encoded payload bytes. No JSON-LD processing needed.</p>
+        </div>
+
+        <div class="side-card vcjwt">
+            <div class="label">Data Integrity (embedded)</div>
+            <h4>Signature lives inside the credential</h4>
+            <pre>{
+  "@context": [...],
+  "issuer":   "did:example:university",
+  "credentialSubject": {...},
+  "proof": {
+    "type":               "DataIntegrityProof",
+    "cryptosuite":        "eddsa-rdfc-2022",
+    "verificationMethod": "did:example:...#key-1",
+    "proofValue":         "z3MvSi...."
+  }
+}</pre>
+            <p style="font-size: 12px; margin-top: 8px">Verifier canonicalizes the credential (URDNA2015 / RDFC) MINUS the <code>proof.proofValue</code>, hashes, then verifies <code>proofValue</code> against that hash. Requires a JSON-LD processor.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ─── Self-check + references ─────────────────────────────────── -->
+<section class="panel" id="references">
+    <h2>Self-check &amp; further reading</h2>
+
+    <h3>Self-check</h3>
+    <p style="color:var(--muted); font-size:12px; margin-top:0">Try to answer before clicking "Show answer".</p>
+    <div class="quiz-grid">
+        <div class="quiz-card">
+            <p class="question">A VC-JWT carries the credential twice — once mapped into JWT claims (<code>iss</code>, <code>sub</code>, <code>nbf</code>, <code>exp</code>) and once verbatim under the <code>vc</code> claim. Why the duplication?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">It's a deliberate compromise. The JWT-level claims let plain-JWT verifiers (libraries that don't know what a VC is) still process issuer matching and expiry — they read <code>iss</code> and <code>exp</code> like any other JWT. The <code>vc</code> claim preserves the original credential JSON for VC-aware code that wants the full structure (extra type values, custom subject fields, etc.). Without the duplication you'd have to choose one consumer or the other.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">In OIDC, the OP must be online during every login. In VC, when does the issuer need to be online — and when does it not?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">The issuer needs to be online ONLY at issuance — when minting and signing the credential for the holder. After that, the verifier checks the credential's signature using just the issuer's public key (typically fetched from the issuer's DID Document or a JWKS endpoint, both of which can be cached). The issuer is never asked to authorize a presentation. This is what makes mDL work offline at a bar: the verifier already has the DMV's public key cached.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">Subject and holder are usually the same person but can differ. Give an example where they differ, and how the holder proves authorization without being the subject.</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">A parent holds a child's vaccination record; the child is the subject (<code>credentialSubject.id</code> = child's DID), but the parent is the holder presenting it to a school nurse. In modern profiles, the holder authorizes via a separate signed presentation (Verifiable Presentation), where they prove control of an authorization relationship to the subject's DID. This is "key binding" / "holder binding" territory — Phase 2.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">A VC is signed by the issuer's private key. The verifier eventually needs the corresponding public key. How does the verifier find it?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Through the <code>issuer</code> field, which is typically a DID URL (<code>did:example:university</code>). The verifier resolves that DID to a DID Document (Phase 1 Item 04 — DID Resolution), then reads the verification methods out of the document — usually JWKs. Specific DID methods give different resolution paths: <code>did:web</code> fetches over HTTPS, <code>did:key</code> decodes the key from the identifier itself, <code>did:jwk</code> wraps the JWK in the DID. The point: <code>issuer</code> is not just a label, it's a pointer to verification material.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">What's the practical difference between an SD-JWT VC and a "regular" VC-JWT?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">SD-JWT VC adds <strong>selective disclosure</strong>: instead of putting the claims plaintext into the <code>vc</code> payload, the issuer commits to claims via salted hashes and ships the underlying values as separate disclosures. The holder can later present a subset — show your age (just the <code>age</code> disclosure) without revealing your address. The signature still covers the hashed commitments, so the verifier knows the disclosed claims came from the original credential. Phase 2 material; built on top of VC-JWT structure.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">A VC has <code>@context: ["https://www.w3.org/ns/credentials/v2"]</code> but you're processing it as VC-JWT. Do you need a JSON-LD library?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">No. The <code>@context</code> field is part of the credential's data model, but VC-JWT processing only requires reading well-known fields (<code>issuer</code>, <code>credentialSubject</code>, <code>type</code>, etc.) by their literal names. You don't expand IRIs, don't canonicalize, don't do any RDF work. JSON-LD machinery becomes load-bearing only when you switch to Data Integrity proofs (which canonicalize the credential as RDF before signing) or when you need to reason about the credential's semantic content across vocabularies.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">A VC-JWT carries the issuer identifier TWICE — once as the JWT-level <code>iss</code> claim and once inside <code>vc.issuer</code>. Why does the verifier check that the two are equal, and what attack does the check prevent?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Because the JWT-level claim and the embedded credential's claim are populated by different layers and an attacker can mismatch them. Scenario: attacker takes a real credential signed for <code>did:example:university</code>, wraps it in a JWT where <code>iss</code> is set to <code>did:example:attacker</code>, and signs the JWT with the attacker's key. A naive verifier that only checks <code>iss</code> against an expected attacker DID and the signature against the attacker's key will pass — but the embedded credential still claims to be issued by the university. The consistency check (<code>payload.iss === payload.vc.issuer</code>) is what stops this — when the verifier sees a mismatch, the credential is rejected regardless of which side passes the other checks. This is "iss-consistency" defense, sometimes called "split-brain credential" prevention.</div>
+        </div>
+
+        <div class="quiz-card">
+            <p class="question">A VCDM 1.x credential has <code>@context: ["https://www.w3.org/2018/credentials/v1"]</code>. A VCDM 2.0 credential has <code>@context: ["https://www.w3.org/ns/credentials/v2"]</code>. Why should a VCDM 2.0 verifier reject the 1.x credential, even though both are syntactically valid VCs?</p>
+            <button class="reveal-btn">Show answer</button>
+            <div class="answer hidden">Because the data model fields differ between versions. VCDM 1.x called the validity period <code>issuanceDate</code>/<code>expirationDate</code>; VCDM 2.0 renamed these to <code>validFrom</code>/<code>validUntil</code>. A verifier compiled for 2.0 looks for <code>validUntil</code> to compute expiry; given a 1.x credential, it would see neither <code>validUntil</code> nor <code>validFrom</code> and silently accept an "infinite-lifetime" credential — which is exactly what the issuer never meant. Enforcing <code>@context[0] === "https://www.w3.org/ns/credentials/v2"</code> as a hard check ensures the verifier and the credential agree on which version of the data model is in play.</div>
+        </div>
+    </div>
+
+    <h3 style="margin-top:24px">Further reading</h3>
+    <div class="ref-grid">
+        <a href="https://www.w3.org/TR/vc-data-model-2.0/" target="_blank" rel="noopener" class="ref-card">
+            <strong>W3C VC Data Model 2.0</strong>
+            <div class="ref-title">The credential structure spec</div>
+            <small>§4 (Basic Concepts), §5 (Advanced Concepts), §6 (Syntaxes), §7 (Securing Mechanisms) are the load-bearing sections.</small>
+        </a>
+        <a href="https://www.w3.org/TR/vc-jose-cose/" target="_blank" rel="noopener" class="ref-card">
+            <strong>Securing VCs with JOSE and COSE</strong>
+            <div class="ref-title">The VC-JWT spec (W3C, current)</div>
+            <small>How VC-JWT and VC-COSE are constructed. The "JOSE" half is what this lab implements.</small>
+        </a>
+        <a href="https://www.w3.org/TR/vc-data-integrity/" target="_blank" rel="noopener" class="ref-card">
+            <strong>Verifiable Credential Data Integrity 1.0</strong>
+            <div class="ref-title">The embedded-proof spec</div>
+            <small>The other securing mechanism. Read this when you encounter Sphereon, walt.id older versions, or linked-data signature deployments.</small>
+        </a>
+        <a href="https://www.w3.org/TR/did-core/" target="_blank" rel="noopener" class="ref-card">
+            <strong>W3C DID Core</strong>
+            <div class="ref-title">Next item in the roadmap</div>
+            <small>How the <code>issuer</code> identifier resolves to actual verification keys. Phase 1 Item 02.</small>
+        </a>
+        <a href="https://www.w3.org/TR/json-ld11/" target="_blank" rel="noopener" class="ref-card">
+            <strong>JSON-LD 1.1</strong>
+            <div class="ref-title">The data-model layer under @context</div>
+            <small>Skip until Data Integrity work. Worth knowing the spec exists.</small>
+        </a>
+        <a href="https://www.w3.org/2018/credentials/v2" target="_blank" rel="noopener" class="ref-card">
+            <strong>VC v2 @context</strong>
+            <div class="ref-title">The actual context document</div>
+            <small>The JSON-LD vocabulary every VCDM 2.0 credential references. View source to see the term definitions.</small>
+        </a>
+    </div>
+</section>
+
+</div>
+
+<script>
+// ─── Background tabs ───────────────────────────────────────────
+
+document.querySelectorAll('.bg-tab-button').forEach(b => {
+    b.onclick = () => {
+        const name = b.dataset.bg;
+        document.querySelectorAll('.bg-tab-button').forEach(x =>
+            x.classList.toggle('active', x.dataset.bg === name));
+        document.querySelectorAll('.bg-tab-content').forEach(c =>
+            c.classList.toggle('active', c.id === 'bg-' + name));
+    };
+});
+
+// ─── Quiz reveal ───────────────────────────────────────────────
+
+document.querySelectorAll('.reveal-btn').forEach(b => {
+    b.onclick = () => {
+        const card = b.closest('.quiz-card');
+        const answer = card.querySelector('.answer');
+        answer.classList.toggle('hidden');
+        b.textContent = answer.classList.contains('hidden') ? 'Show answer' : 'Hide answer';
+    };
+});
+
+// ─── VC builder ────────────────────────────────────────────────
+
+function uuidLike() {
+    // Approximation of randomUUID for the demo. Not cryptographic.
+    const hex = () => Math.floor(Math.random() * 16).toString(16);
+    const block = (n) => Array.from({ length: n }, hex).join('');
+    return `${block(8)}-${block(4)}-4${block(3)}-${block(4)}-${block(12)}`;
+}
+
+let demoId = `urn:uuid:${uuidLike()}`;
+
+function renderBuilder() {
+    const issuer  = document.getElementById('bld-issuer').value;
+    const typeStr = document.getElementById('bld-type').value;
+    const from    = document.getElementById('bld-from').value;
+    const until   = document.getElementById('bld-until').value;
+    const claimsStr = document.getElementById('bld-claims').value;
+    const ctxStr  = document.getElementById('bld-context').value;
+
+    let credentialSubject;
+    try {
+        credentialSubject = JSON.parse(claimsStr);
+    } catch (e) {
+        document.getElementById('bld-output').textContent = `// JSON parse error in credentialSubject:\n// ${e.message}`;
+        return;
+    }
+
+    const typeArr = ['VerifiableCredential'];
+    if (typeStr && !typeArr.includes(typeStr)) typeArr.push(typeStr);
+
+    const contextArr = ['https://www.w3.org/ns/credentials/v2'];
+    const extras = ctxStr.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    for (const url of extras) {
+        if (!contextArr.includes(url)) contextArr.push(url);
+    }
+
+    const vc = {
+        '@context': contextArr,
+        id: demoId,
+        type: typeArr,
+        issuer,
+        ...(from && { validFrom: from }),
+        ...(until && { validUntil: until }),
+        credentialSubject,
+    };
+
+    const json = JSON.stringify(vc, null, 2);
+    // Light syntax highlight: color the field names blue, strings green.
+    const highlighted = json
+        .replace(/("[^"]+")\s*:/g, '<span class="vc-field">$1</span>:')
+        .replace(/:\s*("[^"]*")/g, ': <span class="string">$1</span>');
+    document.getElementById('bld-output').innerHTML = highlighted;
+}
+
+for (const id of ['bld-issuer', 'bld-type', 'bld-from', 'bld-until', 'bld-claims', 'bld-context']) {
+    document.getElementById(id).addEventListener('input', renderBuilder);
+}
+renderBuilder();
+
+</script>
+</body>
+</html>
