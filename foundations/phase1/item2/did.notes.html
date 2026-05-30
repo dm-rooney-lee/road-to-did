@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phase 1 / Item 02 — W3C DID Core 1.0</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+        --scheme:   #6b6b6b;
+        --method:   #c8332b;
+        --msid:     #1e6fff;
+        --path:     #2e8b57;
+        --query:    #d4a017;
+        --fragment: #6f3eb8;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.6 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 6px 0;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+    .page-nav {
+        display: flex; gap: 4px; flex-wrap: wrap;
+        margin-bottom: 18px; padding: 10px 14px;
+        background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px; font-size: 12px; color: var(--muted);
+        text-decoration: none; border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+    .muted { color: var(--muted); }
+    .tag {
+        display: inline-block; padding: 1px 6px; border-radius: 3px;
+        font: 11px/1.5 ui-monospace, monospace; color: #fff;
+    }
+    .t-scheme   { background: var(--scheme); }
+    .t-method   { background: var(--method); }
+    .t-msid     { background: var(--msid); }
+    .t-path     { background: var(--path); }
+    .t-query    { background: var(--query); color: #1a1a1a; }
+    .t-fragment { background: var(--fragment); }
+    .seg-scheme   { color: var(--scheme); }
+    .seg-method   { color: var(--method);   font-weight: 600; }
+    .seg-msid     { color: var(--msid);     font-weight: 600; }
+    .seg-path     { color: var(--path);     font-weight: 600; }
+    .seg-query    { color: var(--query);    font-weight: 600; }
+    .seg-fragment { color: var(--fragment); font-weight: 600; }
+    .demo {
+        background: var(--code-bg); border: 1px solid var(--border);
+        border-radius: 6px; padding: 14px 16px; margin: 12px 0;
+    }
+    .demo input[type=text] {
+        width: 100%; padding: 8px 10px; font: 13px/1.4 ui-monospace, monospace;
+        border: 1px solid var(--border); border-radius: 4px; background: #fff;
+    }
+    .demo .chips { margin-top: 6px; }
+    .demo .chips button {
+        font: 11px/1.4 ui-monospace, monospace; margin: 3px 4px 0 0;
+        padding: 3px 7px; border: 1px solid var(--border); background: #fff;
+        border-radius: 4px; cursor: pointer; color: var(--ink);
+    }
+    .demo .chips button:hover { background: var(--highlight); }
+    .render { font: 15px/1.7 ui-monospace, monospace; margin: 12px 0 6px; word-break: break-all; }
+    table.parts { border-collapse: collapse; width: 100%; margin-top: 6px; }
+    table.parts td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.parts td:first-child { width: 150px; white-space: nowrap; }
+    .verdict { margin-top: 8px; font-size: 13px; }
+    .verdict.ok  { color: var(--success); }
+    .verdict.bad { color: var(--danger); }
+    .callout {
+        border-left: 3px solid var(--warn); background: #fffaf0;
+        padding: 8px 12px; margin: 10px 0; border-radius: 0 4px 4px 0;
+    }
+    .callout.sec { border-left-color: var(--danger); background: #fdf2f1; }
+    .k { color: var(--method); }
+    .annot { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <h1>Phase 1 · Item 02 — Decentralized Identifiers (DID Core 1.0)</h1>
+    <p>From "the issuer's public key" you were handed in Item 01 → to an identifier that <em>tells you</em> that key.</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#why">1 · Why</a>
+    <a href="#syntax">2 · DID syntax</a>
+    <a href="#parser">3 · Parser playground</a>
+    <a href="#document">4 · DID Document</a>
+    <a href="#relationships">5 · Methods vs relationships</a>
+    <a href="#deref">6 · Dereferencing</a>
+    <a href="#methods">7 · DID methods</a>
+</nav>
+
+<!-- ============================================================ -->
+<section class="panel" id="why">
+    <h2>1 · The gap Item 01 left open</h2>
+    <p>Item 01's verifier signature was:</p>
+    <pre>verifyVcJwt(vcJwt, <span class="k">publicKey: KeyObject</span>, expectations)</pre>
+    <p>
+        That <code>publicKey</code> arrived from nowhere. The contract called it
+        "the issuer's public key the verifier trusts for this issuer" — and
+        quietly assumed you already had it and already trusted it. Two unanswered
+        questions hid in that phrase:
+    </p>
+    <ul>
+        <li><b>Discovery</b> — given an issuer named <code>did:example:123</code>, where do you <em>get</em> the key bytes?</li>
+        <li><b>Binding</b> — what makes that key <em>authoritatively</em> the issuer's, with no Certificate Authority vouching?</li>
+    </ul>
+    <p>
+        A <b>DID</b> answers discovery: it is a string that resolves to a
+        <b>DID Document</b>, a JSON object listing the controller's public keys.
+        The binding answer is per-method (see §7) — but in every case the
+        controller of the DID, not a third party, governs the Document.
+    </p>
+    <div class="callout">
+        This item implements the parts that need no network: parsing the
+        identifier (§2–3) and reading the Document (§4–6). The act of fetching a
+        Document from a live DID — <em>resolution</em> — is Item 04.
+    </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="panel" id="syntax">
+    <h2>2 · The DID and DID-URL grammar</h2>
+    <p>A bare <b>DID</b> has exactly three parts (DID Core §3.1):</p>
+    <div class="render">
+        <span class="seg-scheme">did</span>:<span class="seg-method">example</span>:<span class="seg-msid">123456789abcdefghi</span>
+    </div>
+    <table class="parts">
+        <tr><td><span class="tag t-scheme">scheme</span></td><td>Always the literal <code>did</code>. Like <code>https</code> in a URL.</td></tr>
+        <tr><td><span class="tag t-method">method</span></td><td><code>1*( a-z / 0-9 )</code> — lowercase only. Names the ruleset for how this DID resolves and who may change it.</td></tr>
+        <tr><td><span class="tag t-msid">method-specific-id</span></td><td>Defined by the method. <b>May contain further <code>:</code> separators</b> (e.g. <code>did:web:example.com:user:alice</code>). Allowed chars: <code>A-Z a-z 0-9 . - _</code> and <code>%</code>-encoding.</td></tr>
+    </table>
+
+    <h3>A DID URL layers path, query, and fragment on top of the bare DID (§3.2)</h3>
+    <div class="render">
+        <span class="seg-scheme">did</span>:<span class="seg-method">example</span>:<span class="seg-msid">123</span><span class="seg-path">/a/b</span><span class="seg-query">?x=1</span><span class="seg-fragment">#key-1</span>
+    </div>
+    <pre>did-url = did path-abempty [ "?" query ] [ "#" fragment ]</pre>
+    <table class="parts">
+        <tr><td><span class="tag t-path">path</span></td><td>Begins at the first <code>/</code>, runs until <code>?</code> or <code>#</code> or end. Returned <b>with</b> its leading <code>/</code>.</td></tr>
+        <tr><td><span class="tag t-query">query</span></td><td>Begins at <code>?</code>, runs until <code>#</code> or end. Returned <b>without</b> the <code>?</code>.</td></tr>
+        <tr><td><span class="tag t-fragment">fragment</span></td><td>Begins at the first <code>#</code>, runs to the end. Returned <b>without</b> the <code>#</code>.</td></tr>
+    </table>
+    <div class="callout">
+        Order is fixed: <b>path → query → fragment</b>. So the first <code>#</code>
+        starts the fragment even if a <code>#</code> also appears later inside it,
+        and the first <code>?</code> after the path starts the query. The parser
+        in §3 enforces exactly these boundaries.
+    </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="panel" id="parser">
+    <h2>3 · Parser playground</h2>
+    <p>Type a DID URL — or pick an example — and watch it decompose live. This is the behaviour <code>parseDidUrl</code> (Section 1) must produce.</p>
+    <div class="demo">
+        <input type="text" id="didInput" value="did:example:123/a/b?x=1&amp;y=2#key-1" spellcheck="false" autocomplete="off">
+        <div class="chips" id="examples"></div>
+        <div class="render" id="rendered"></div>
+        <table class="parts" id="partsTable"></table>
+        <div class="verdict" id="verdict"></div>
+    </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="panel" id="document">
+    <h2>4 · The DID Document</h2>
+    <p>Resolving a DID yields a JSON object. Annotated:</p>
+    <pre>{
+  <span class="annot">// JSON-LD context, like a VC's @context</span>
+  "@context": ["https://www.w3.org/ns/did/v1"],
+
+  <span class="annot">// the DID this document describes — its own name</span>
+  "id": "did:example:123",
+
+  <span class="annot">// the CATALOGUE of keys: each is a full key with material</span>
+  "verificationMethod": [{
+    "id": "did:example:123<span class="seg-fragment">#key-1</span>",   <span class="annot">// a DID URL: DID + fragment</span>
+    "type": "JsonWebKey2020",
+    "controller": "did:example:123",
+    "publicKeyJwk": { "kty": "EC", "crv": "P-256", "x": "…", "y": "…" }
+  }],
+
+  <span class="annot">// AUTHORIZATION: which keys may be used for which purpose</span>
+  "authentication":  ["did:example:123#key-1"],   <span class="annot">// reference string</span>
+  "assertionMethod": ["did:example:123#key-1"]     <span class="annot">// the VC-signing purpose</span>
+}</pre>
+    <p>
+        <code>buildDidDocument</code> (Section 2) assembles this: it passes
+        <code>verificationMethod</code> through, and for each relationship the
+        caller asks for, emits an array of <b>reference strings</b> pointing back
+        into the catalogue (define a key once, authorize it many times).
+    </p>
+</section>
+
+<!-- ============================================================ -->
+<section class="panel" id="relationships">
+    <h2>5 · Verification <em>methods</em> vs verification <em>relationships</em></h2>
+    <p>The single most important structural idea in the Document. Two separate concerns:</p>
+    <table class="parts">
+        <tr>
+            <td><b>verificationMethod</b></td>
+            <td>"Here is a key." The catalogue. id + type + controller + key material.</td>
+        </tr>
+        <tr>
+            <td><b>relationships</b><br><span class="muted">authentication, assertionMethod, keyAgreement, capabilityInvocation, capabilityDelegation</span></td>
+            <td>"This key may be used <em>for this purpose</em>." An authorization layer over the catalogue.</td>
+        </tr>
+    </table>
+    <p>Each relationship entry is one of two forms:</p>
+    <pre>"assertionMethod": [
+  "did:example:123#key-1",          <span class="annot">// REFERENCE → defined under verificationMethod</span>
+  { "id": "did:example:123#key-9",  <span class="annot">// EMBEDDED → defined right here, used only for this purpose</span>
+    "type": "JsonWebKey2020", "controller": "…", "publicKeyJwk": {…} }
+]</pre>
+    <div class="callout sec">
+        <b>Why this is a security boundary, not bookkeeping.</b> A VC issuer signs
+        credentials with an <code>assertionMethod</code> key. If a credential is
+        signed by a key the issuer's Document lists only under
+        <code>keyAgreement</code> (key for encryption, not assertions), a correct
+        verifier rejects it — the issuer never authorized that key to make
+        claims. Finding the key (§6) and checking <em>which relationship</em> it
+        sits under are two different steps. Item 01's <code>verifyVcJwt</code>
+        skipped the second because it was handed a single trusted key; a real
+        verifier does not get that luxury.
+    </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="panel" id="deref">
+    <h2>6 · Dereferencing a verification method</h2>
+    <p>
+        A VC-JWT issued under a DID carries a key id (the JWS <code>kid</code>) —
+        a DID URL like <code>did:example:123#key-1</code>. To turn that into key
+        bytes, <code>dereferenceVerificationMethod</code> (Section 3) runs:
+    </p>
+    <ol>
+        <li>
+            <b>Scope check.</b> Split the reference into its bare DID and
+            fragment (using your §1 parser). If the bare DID ≠ the Document's
+            <code>id</code>, this Document cannot speak for it →
+            <code>null</code>. <span class="muted">This is the load-bearing
+            check: accepting a key whose DID doesn't match the document is how
+            you'd trust the wrong issuer.</span>
+        </li>
+        <li><b>Catalogue lookup.</b> Find a <code>verificationMethod</code> entry whose <code>id</code> equals the full reference → return it.</li>
+        <li><b>Embedded lookup.</b> Otherwise scan each relationship array for an embedded <em>object</em> (not a string) whose <code>id</code> matches → return it.</li>
+        <li>No match anywhere → <code>null</code>.</li>
+    </ol>
+    <div class="callout">
+        String entries in a relationship are resolved by step 2 (they point into
+        the catalogue), <em>not</em> step 3. Step 3 only matches inline objects.
+        The two forms from §5 are exactly why the search has two places to look.
+    </div>
+    <p class="muted">
+        Then the loop closes: read <code>publicKeyJwk</code> off the returned
+        method, import it to a <code>KeyObject</code>, and hand it to the very
+        <code>verifyVcJwt</code> you wrote in Item 01.
+    </p>
+</section>
+
+<!-- ============================================================ -->
+<section class="panel" id="methods">
+    <h2>7 · Why a <em>method</em> segment exists at all</h2>
+    <p>
+        The <code>method</code> in <code>did:<b>method</b>:id</code> selects the
+        rule for two things: how the DID maps to its Document, and who is allowed
+        to change it. That choice <em>is</em> the root-of-trust knob.
+    </p>
+    <table class="parts">
+        <tr><td><code>did:key</code></td><td>Document is <b>derived deterministically</b> from the key in the id itself. No registry, no network. Self-certifying; cannot rotate keys.</td></tr>
+        <tr><td><code>did:web</code></td><td>Document lives at a <b>well-known HTTPS URL</b> under a domain. Trust = trust the domain/TLS. Most practical to deploy.</td></tr>
+        <tr><td><code>did:jwk</code></td><td>A single JWK wrapped as a DID. Like <code>did:key</code> but JWK-native.</td></tr>
+        <tr><td><code>did:ion</code> / <code>did:ebsi</code></td><td>Document state anchored on a <b>ledger</b>. Trust = trust the chain. Supports rotation and history.</td></tr>
+    </table>
+    <p class="muted">
+        Same identifier shape, four different answers to "what makes this key
+        authoritative." Item 03 compares these head-to-head; Item 04 implements
+        resolution for the network-free ones.
+    </p>
+    <div class="callout">
+        Contrast with X.509 (the eIDAS route, Item 05): there a Certificate
+        Authority signs a name→key binding and everyone trusts the CA. DIDs move
+        the binding's authority to the identifier's controller. Whether that is
+        better is exactly the trade-off Item 05 asks you to weigh.
+    </div>
+</section>
+
+</div>
+
+<script>
+const EXAMPLES = [
+    'did:example:123456789abcdefghi',
+    'did:web:example.com:user:alice',
+    'did:example:123#key-1',
+    'did:example:123?service=files&relativeRef=/img',
+    'did:example:123/a/b?x=1&y=2#key-1',
+    'did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK',
+    'did:Example:123',     // invalid: uppercase method
+    'did::123',            // invalid: empty method
+    'did:example:',        // invalid: empty method-specific-id
+];
+
+const SEG = {
+    scheme: 'seg-scheme', method: 'seg-method', msid: 'seg-msid',
+    path: 'seg-path', query: 'seg-query', fragment: 'seg-fragment',
+};
+
+// Reference parse used only to DRIVE THE DEMO. This is illustrative; your
+// Section 1 implementation is what the tests grade.
+function demoParse(s) {
+    if (!s.startsWith('did:')) return { error: 'missing "did:" scheme' };
+    let rest = s.slice(4);
+
+    // peel fragment, then query, then path — in reverse of how they appear
+    let fragment, query, path;
+    const hashAt = rest.indexOf('#');
+    if (hashAt >= 0) { fragment = rest.slice(hashAt + 1); rest = rest.slice(0, hashAt); }
+    const qAt = rest.indexOf('?');
+    if (qAt >= 0) { query = rest.slice(qAt + 1); rest = rest.slice(0, qAt); }
+    const slashAt = rest.indexOf('/');
+    if (slashAt >= 0) { path = rest.slice(slashAt); rest = rest.slice(0, slashAt); }
+
+    const colon = rest.indexOf(':');
+    if (colon < 0) return { error: 'no ":" after method' };
+    const method = rest.slice(0, colon);
+    const msid = rest.slice(colon + 1);
+
+    if (!/^[a-z0-9]+$/.test(method)) return { error: 'method must be 1+ lowercase a-z / 0-9' };
+    if (msid.length === 0) return { error: 'empty method-specific-id' };
+    if (!/^([A-Za-z0-9.\-_:]|%[0-9A-Fa-f]{2})+$/.test(msid)) return { error: 'illegal char in method-specific-id' };
+
+    return {
+        did: 'did:' + method + ':' + msid,
+        method, msid, path, query, fragment,
+    };
+}
+
+function chip(cls, text) {
+    return '<span class="' + cls + '">' + text.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+}
+
+function render() {
+    const s = document.getElementById('didInput').value;
+    const r = demoParse(s);
+    const rendered = document.getElementById('rendered');
+    const table = document.getElementById('partsTable');
+    const verdict = document.getElementById('verdict');
+
+    if (r.error) {
+        rendered.innerHTML = '<span style="color:var(--danger)">' +
+            s.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+        table.innerHTML = '';
+        verdict.className = 'verdict bad';
+        verdict.textContent = '✗ rejected — ' + r.error;
+        return;
+    }
+
+    let html = chip(SEG.scheme, 'did') + ':' + chip(SEG.method, r.method) + ':' + chip(SEG.msid, r.msid);
+    if (r.path)     html += chip(SEG.path, r.path);
+    if (r.query)    html += '?' + chip(SEG.query, r.query);
+    if (r.fragment) html += '#' + chip(SEG.fragment, r.fragment);
+    rendered.innerHTML = html;
+
+    const rows = [
+        ['did', r.did], ['method', r.method], ['methodSpecificId', r.msid],
+        ['path', r.path], ['query', r.query], ['fragment', r.fragment],
+    ];
+    table.innerHTML = rows.map(([k, v]) =>
+        '<tr><td class="mono">' + k + '</td><td class="mono">' +
+        (v === undefined ? '<span class="muted">— undefined</span>'
+                         : chip('', v)) + '</td></tr>').join('');
+    verdict.className = 'verdict ok';
+    verdict.textContent = '✓ valid DID URL';
+}
+
+function mountExamples() {
+    const box = document.getElementById('examples');
+    box.innerHTML = EXAMPLES.map((e, i) =>
+        '<button data-i="' + i + '">' + e.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</button>').join('');
+    box.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        document.getElementById('didInput').value = EXAMPLES[+b.dataset.i];
+        render();
+    }));
+}
+
+document.getElementById('didInput').addEventListener('input', render);
+mountExamples();
+render();
+</script>
+</body>
+</html>
