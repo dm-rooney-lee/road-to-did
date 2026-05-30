@@ -69,6 +69,8 @@ export type DidDocument = {
     capabilityDelegation?: VerificationRelationship;
 };
 
+const DID_AND_URL_REGEX = /^(?<did>[^/?#]+)(?<url>[/?#].*)?$/;
+
 // ============================================================
 // Section 1 — Parse a DID URL (DID Core 1.0 §3.1, §3.2)
 //
@@ -117,7 +119,48 @@ export type DidDocument = {
 // ============================================================
 
 export function parseDidUrl(didUrl: string): DidUrlParts {
-    return TODO('buildDidDocument');
+    const didAndUrlMatch = didUrl.match(DID_AND_URL_REGEX);
+    if (!didAndUrlMatch?.groups) {
+        throw new Error(`Invalid didUrl: ${didUrl}`);
+    }
+
+    const {did, url} = didAndUrlMatch.groups;
+
+    // parse did
+    const [scheme, method, ...rest] = did.split(':');
+    const methodId = rest.join(':');
+    if (!scheme || scheme !== 'did') {
+        throw new Error(`Invalid scheme: ${scheme}`);
+    }
+
+    const methodPattern = /^[a-z0-9]+$/;
+    if (!method || !methodPattern.test(method)) {
+        throw new Error(`Invalid method: ${method}`);
+    }
+
+    const methodIdPattern = /^([A-Za-z0-9:._-]|%[0-9A-Fa-f]{2})+$/;
+    if (!methodId || !methodIdPattern.test(methodId)) {
+        throw new Error(`Invalid methodId: ${methodId}`);
+    }
+
+    // parse url
+    if (!url) {
+        return {did: did, method: method, methodSpecificId: methodId};
+    }
+
+    const splitUrl = url.split(/[?#]/);
+    const path = url.includes('/') ? splitUrl[0] : undefined;
+    const query = url.includes('?') ? splitUrl[1] : undefined;
+    const fragment = url.includes('#') ? splitUrl.at(-1) : undefined;
+
+    return {
+        did: did,
+        method: method,
+        methodSpecificId: methodId,
+        path: path,
+        query: query,
+        fragment: fragment,
+    };
 }
 
 // ============================================================
