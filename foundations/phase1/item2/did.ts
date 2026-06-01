@@ -179,12 +179,13 @@ export function parseDidUrl(didUrl: string): DidUrlParts {
 //     verificationMethod — pass through the input's verification methods array
 //                          (each entry already a full VerificationMethod). Omit
 //                          the property entirely if the input has none.
-//     authentication,    — for each relationship the caller supplies, attach an
-//     assertionMethod,     array of REFERENCE STRINGS (the VerificationMethod
-//     ...                  ids), not embedded copies. A document SHOULD reference
-//                          a key defined once under verificationMethod rather
-//                          than duplicate it. Omit any relationship the caller
-//                          did not supply.
+//     authentication,    — the two verification RELATIONSHIPS the input accepts.
+//     assertionMethod      For each one the caller supplies, set it to an array
+//                          of REFERENCE STRINGS (the VerificationMethod ids), not
+//                          embedded copies — a document SHOULD reference a key
+//                          defined once under verificationMethod rather than
+//                          duplicate it. Omit either relationship the caller did
+//                          not supply.
 //
 //   The caller passes, per relationship, the list of verification-method ids
 //   that should be usable for that purpose. Every id listed for a relationship
@@ -204,7 +205,31 @@ export type DidDocumentInput = {
 };
 
 export function buildDidDocument(input: DidDocumentInput): DidDocument {
-    return TODO('buildDidDocument');
+    const {'@context': context, did, verificationMethods, authentication, assertionMethod} = input;
+    const ids = verificationMethods.map(method => method.id);
+    if (authentication) {
+        const isAuthenticationValid = authentication.every(auth => ids.includes(auth));
+        if (!isAuthenticationValid) {
+            throw new Error(`Authentication IDs not match verificationIds:
+             authenticationIds=${authentication}, verificationIds=${ids}`);
+        }
+    }
+
+    if (assertionMethod) {
+        const isAssertionValid = assertionMethod.every(assertion => ids.includes(assertion));
+        if (!isAssertionValid) {
+            throw new Error(`Assertion IDs not match verificationIds:
+             assertionIds=${assertionMethod}, verificationIds=${ids}`);
+        }
+    }
+
+    return {
+        '@context': context,
+        id: did,
+        verificationMethod: verificationMethods,
+        ...authentication !== undefined ? {authentication: authentication} : {},
+        ...assertionMethod !== undefined ? {assertionMethod: assertionMethod} : {},
+    };
 }
 
 // ============================================================
