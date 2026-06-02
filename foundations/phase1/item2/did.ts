@@ -27,6 +27,7 @@
  * a ledger for did:ion, pure decoding for did:key). That is Item 04. Here the
  * Document is handed to you; you parse identifiers and read Documents.
  */
+import * as vm from "node:vm";
 
 function TODO(label: string): never {
     throw new Error(`TODO — ${label} not implemented`);
@@ -274,7 +275,45 @@ export function dereferenceVerificationMethod(
     didDocument: DidDocument,
     vmReference: string,
 ): VerificationMethod | null {
-    return TODO('dereferenceVerificationMethod');
+    const [bareDid, fragment] = vmReference.split('#');
+    if (didDocument.id !== bareDid) {
+        return null;
+    }
+
+    const verificationMethod = didDocument.verificationMethod;
+    if (verificationMethod !== undefined) {
+        const matchingMethod = verificationMethod.find(method => method.id === vmReference);
+        if (matchingMethod !== undefined) {
+            return matchingMethod;
+        }
+    }
+
+    const authenticationFound = findById(vmReference, didDocument.authentication);
+    const assertionMethodFound = findById(vmReference, didDocument.assertionMethod);
+    const keyAgreementFound = findById(vmReference, didDocument.keyAgreement);
+    const capabilityInvocationFound = findById(vmReference, didDocument.capabilityInvocation);
+    const capabilityDelegationFound = findById(vmReference, didDocument.capabilityDelegation);
+
+    return authenticationFound ??
+        assertionMethodFound ??
+        keyAgreementFound ??
+        capabilityInvocationFound ??
+        capabilityDelegationFound ??
+        null;
+}
+
+function findById(
+    vmReference: string,
+    relationship?: VerificationRelationship,
+): VerificationMethod | undefined {
+    if (relationship !== undefined) {
+        const matchingMethod = relationship.find(
+            (rel): rel is VerificationMethod => typeof rel !== 'string' && rel.id === vmReference
+        );
+        if (matchingMethod !== undefined) return matchingMethod;
+    }
+
+    return undefined;
 }
 
 // ============================================================
