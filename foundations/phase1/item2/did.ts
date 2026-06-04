@@ -149,18 +149,46 @@ export function parseDidUrl(didUrl: string): DidUrlParts {
         return {did: did, method: method, methodSpecificId: methodId};
     }
 
-    const splitUrl = url.split(/[?#]/);
-    const path = url.includes('/') ? splitUrl[0] : undefined;
-    const query = url.includes('?') ? splitUrl[1] : undefined;
-    const fragment = url.includes('#') ? splitUrl.at(-1) : undefined;
+    const pathIndex = url.indexOf('/');
+    const queryIndex = url.indexOf('?');
+    const fragmentIndex = url.indexOf('#');
+
+    const maybeHasPath = pathIndex !== -1;
+    const maybeHasQuery = queryIndex !== -1;
+    const maybeHasFragment = fragmentIndex !== -1;
+
+    const delimitersIndices = [queryIndex, fragmentIndex].filter(i => i !== -1);
+    const firstQueryOrFragmentIndex = delimitersIndices.length > 0
+        ? Math.min(...delimitersIndices)
+        : -1;
+
+    let path: string | undefined = undefined;
+    if (maybeHasPath) {
+        if (firstQueryOrFragmentIndex === -1) {
+            path = url.substring(pathIndex);
+        } else if (firstQueryOrFragmentIndex > pathIndex) {
+            path = url.substring(pathIndex, firstQueryOrFragmentIndex);
+        }
+    }
+
+    let query: string | undefined = undefined;
+    if (maybeHasQuery) {
+        if (!maybeHasFragment) {
+            query = url.substring(queryIndex + 1);
+        } else if (queryIndex < fragmentIndex) {
+            query = url.substring(queryIndex + 1, fragmentIndex);
+        }
+    }
+
+    const fragment = !maybeHasFragment ? undefined : url.substring(fragmentIndex + 1);
 
     return {
         did: did,
         method: method,
         methodSpecificId: methodId,
-        path: path,
-        query: query,
-        fragment: fragment,
+        ...path !== undefined ? {path: path} : {},
+        ...query !== undefined ? {query: query} : {},
+        ...fragment !== undefined ? {fragment: fragment} : {},
     };
 }
 
@@ -288,17 +316,11 @@ export function dereferenceVerificationMethod(
         }
     }
 
-    const authenticationFound = findById(vmReference, didDocument.authentication);
-    const assertionMethodFound = findById(vmReference, didDocument.assertionMethod);
-    const keyAgreementFound = findById(vmReference, didDocument.keyAgreement);
-    const capabilityInvocationFound = findById(vmReference, didDocument.capabilityInvocation);
-    const capabilityDelegationFound = findById(vmReference, didDocument.capabilityDelegation);
-
-    return authenticationFound ??
-        assertionMethodFound ??
-        keyAgreementFound ??
-        capabilityInvocationFound ??
-        capabilityDelegationFound ??
+    return findById(vmReference, didDocument.authentication) ??
+        findById(vmReference, didDocument.assertionMethod) ??
+        findById(vmReference, didDocument.keyAgreement) ??
+        findById(vmReference, didDocument.capabilityInvocation) ??
+        findById(vmReference, didDocument.capabilityDelegation) ??
         null;
 }
 
