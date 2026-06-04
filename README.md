@@ -2,6 +2,10 @@
 
 Personal hands-on notes and labs for learning decentralized identity — DIDs, verifiable credentials, OpenID4VC, eIDAS.
 
+## Roadmap
+
+The full 7-phase learning path lives in [roadmap.md](./roadmap.md) — from crypto foundations through building a toy DID/VC stack.
+
 ## How to read
 
 Each topic folder contains three companion files per item:
