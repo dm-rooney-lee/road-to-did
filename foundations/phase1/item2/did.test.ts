@@ -111,6 +111,28 @@ describe('Section 1 — parseDidUrl', () => {
         // space is not an idchar
         assert.throws(() => parseDidUrl('did:example:abc def'));
     });
+
+    test('1m — a "/" inside the query does not create a path (path stays undefined)', () => {
+        // the "/" in relativeRef belongs to the query, not a path component;
+        // path is present only when the URL actually has a path segment
+        const parts = parseDidUrl('did:example:123?service=files&relativeRef=/img');
+
+        assert.equal(parts.did, 'did:example:123');
+        assert.equal(parts.query, 'service=files&relativeRef=/img');
+        assert.equal(parts.path, undefined);
+        assert.equal(parts.fragment, undefined);
+    });
+
+    test('1n — a "?" inside the fragment stays part of the fragment (no phantom query)', () => {
+        // the fragment runs to the end of the string; a "?" after "#" is fragment text,
+        // not a query introducer
+        const parts = parseDidUrl('did:example:123#frag?x=1');
+
+        assert.equal(parts.did, 'did:example:123');
+        assert.equal(parts.fragment, 'frag?x=1');
+        assert.equal(parts.query, undefined);
+        assert.equal(parts.path, undefined);
+    });
 });
 
 // ============================================================
