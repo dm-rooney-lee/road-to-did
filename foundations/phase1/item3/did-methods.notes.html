@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phase 1 / Item 03 — Major DID Methods compared</title>
+<style>
+    :root {
+        --bg: #f8f7f3;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --border: #d8d6cf;
+        --highlight: #fff4c4;
+        --code-bg: #f0eee5;
+        --danger: #c8332b;
+        --success: #2e8b57;
+        --warn: #d4a017;
+        --jwk: #1e6fff;
+        --key: #6f3eb8;
+        --web: #2e8b57;
+        --ledger: #c8332b;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; }
+    h4 { font-size: 13px; margin: 10px 0 6px; }
+    p  { margin: 6px 0; }
+    code, .mono { font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font: 11px/1.6 ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 6px 0;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 20px; }
+    header p { color: var(--muted); margin: 4px 0 0; }
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+    }
+    .page-nav {
+        display: flex; gap: 4px; flex-wrap: wrap;
+        margin-bottom: 18px; padding: 10px 14px;
+        background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    }
+    .page-nav a {
+        padding: 6px 12px; font-size: 12px; color: var(--muted);
+        text-decoration: none; border-radius: 4px;
+    }
+    .page-nav a:hover { background: var(--code-bg); color: var(--ink); }
+    .muted { color: var(--muted); }
+    .tag {
+        display: inline-block; padding: 1px 6px; border-radius: 3px;
+        font: 11px/1.5 ui-monospace, monospace; color: #fff;
+    }
+    .t-jwk    { background: var(--jwk); }
+    .t-key    { background: var(--key); }
+    .t-web    { background: var(--web); }
+    .t-ledger { background: var(--ledger); }
+    .seg-jwk    { color: var(--jwk);    font-weight: 600; }
+    .seg-key    { color: var(--key);    font-weight: 600; }
+    .seg-web    { color: var(--web);    font-weight: 600; }
+    .seg-ledger { color: var(--ledger); font-weight: 600; }
+    .callout {
+        border-left: 3px solid var(--warn); background: #fffaf0;
+        padding: 8px 12px; margin: 10px 0; border-radius: 0 4px 4px 0;
+    }
+    .callout.sec { border-left-color: var(--danger); background: #fdf2f1; }
+    /* spectrum bar */
+    .spectrum { display: flex; margin: 14px 0 6px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+    .spectrum > div { flex: 1; padding: 10px 12px; color: #fff; font-size: 12px; }
+    .spectrum .s-jwk    { background: var(--jwk); }
+    .spectrum .s-key    { background: var(--key); }
+    .spectrum .s-web    { background: var(--web); }
+    .spectrum .s-ledger { background: var(--ledger); }
+    .spectrum b { display: block; font-size: 12px; margin-bottom: 3px; }
+    .spectrum small { opacity: .9; }
+    .axis-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+    /* comparison table */
+    table.cmp { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 12.5px; }
+    table.cmp th, table.cmp td { padding: 7px 10px; border: 1px solid var(--border); vertical-align: top; text-align: left; }
+    table.cmp th { background: var(--code-bg); }
+    table.cmp td:first-child { white-space: nowrap; font-weight: 600; }
+    /* playground */
+    .demo {
+        background: var(--code-bg); border: 1px solid var(--border);
+        border-radius: 6px; padding: 14px 16px; margin: 12px 0;
+    }
+    .demo input[type=text] {
+        width: 100%; padding: 8px 10px; font: 13px/1.4 ui-monospace, monospace;
+        border: 1px solid var(--border); border-radius: 4px; background: #fff;
+    }
+    .demo .chips { margin-top: 6px; }
+    .demo .chips button {
+        font: 11px/1.4 ui-monospace, monospace; margin: 3px 4px 0 0;
+        padding: 3px 7px; border: 1px solid var(--border); background: #fff;
+        border-radius: 4px; cursor: pointer; color: var(--ink);
+    }
+    .demo .chips button:hover { background: var(--highlight); }
+    .verdict { margin-top: 10px; font-size: 13px; }
+    .verdict .badge { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <h1>Phase 1 · Item 03 — Major DID Methods compared</h1>
+    <p>did:jwk · did:key · did:web · did:ion / did:ebsi — one identifier shape, four roots of trust</p>
+</header>
+
+<nav class="page-nav">
+    <a href="#spectrum">1 · The spectrum</a>
+    <a href="#jwk">2 · did:jwk</a>
+    <a href="#key">3 · did:key</a>
+    <a href="#web">4 · did:web</a>
+    <a href="#ledger">5 · did:ion / did:ebsi</a>
+    <a href="#compare">6 · Side by side</a>
+    <a href="#play">7 · Resolver playground</a>
+</nav>
+
+<section class="panel" id="spectrum">
+    <h2>1 · The one question every method answers differently</h2>
+    <p>
+        Item 02 parsed DID syntax and read a DID Document that was <em>handed to you</em>. It left a
+        sentence unexplained: <em>“each method defines its own rule for how a DID maps to a Document.”</em>
+        That rule is really an answer to a single question:
+    </p>
+    <p style="font-size:15px"><strong>Given the identifier, where does its DID Document come from — and whom must you trust for it?</strong></p>
+    <p>
+        The <code>did:<span class="seg-method">method</span>:id</code> segment is how you pick the answer.
+        The four methods you should be able to compare line up on one axis, from “trust nothing but math”
+        to “trust a chain”:
+    </p>
+
+    <div class="spectrum">
+        <div class="s-jwk"><b>did:jwk</b><small>document = f(identifier). The id <em>is</em> a JSON key.</small></div>
+        <div class="s-key"><b>did:key</b><small>document = f(identifier). The id <em>is</em> a binary key.</small></div>
+        <div class="s-web"><b>did:web</b><small>document hosted at an HTTPS URL the id points to.</small></div>
+        <div class="s-ledger"><b>did:ion / did:ebsi</b><small>document anchored on a ledger.</small></div>
+    </div>
+    <div class="axis-labels">
+        <span>← self-contained · no network · trust the math</span>
+        <span>infrastructure-backed · keys can rotate · trust a party/chain →</span>
+    </div>
+
+    <div class="callout">
+        Two of these (<span class="seg-jwk">did:jwk</span>, <span class="seg-key">did:key</span>) are pure
+        <em>decoding</em> — the lab implements them in full. <span class="seg-web">did:web</span> needs a
+        network fetch, so the lab stops at deriving the URL. <span class="seg-ledger">did:ion / did:ebsi</span>
+        need a chain, so they stay conceptual here. The uniform machinery that ties all four together —
+        a <code>resolve()</code> that dispatches on the method name — is Item 04.
+    </div>
+</section>
+
+<section class="panel" id="jwk">
+    <h2>2 · <span class="seg-jwk">did:jwk</span> — the key as a JSON identifier</h2>
+    <p>
+        The simplest method. The whole DID Document is computed from the identifier, because the identifier
+        <em>is</em> a public key:
+    </p>
+    <pre>did:jwk:<span class="seg-jwk">eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6...</span>
+            └─ base64url( utf8( JSON of a public JWK ) )</pre>
+    <p>
+        Resolving it is two steps: base64url-decode the part after <code>did:jwk:</code>, then
+        <code>JSON.parse</code> it back into a JWK. That JWK becomes the one verification method in a
+        Document whose <code>id</code> is the DID itself.
+    </p>
+    <h3>The JWK’s <code>use</code> decides which relationships appear</h3>
+    <p>
+        This is the one subtlety. A JWK may carry a <code>use</code> member, and it gates the verification
+        relationships — the authorization layer from Item 02’s Lesson 2:
+    </p>
+    <pre><span class="seg-jwk">use: "sig"</span>  → authentication, assertionMethod, capabilityInvocation, capabilityDelegation
+<span class="seg-jwk">use: "enc"</span>  → keyAgreement only
+<span class="seg-jwk">use absent </span> → all five</pre>
+    <div class="callout">
+        Verbose but human-legible: one base64url decode and you can read the key type in plain words
+        (<code>"kty":"EC"</code>). That readability is the trade <span class="seg-jwk">did:jwk</span> makes
+        against the next method.
+    </div>
+</section>
+
+<section class="panel" id="key">
+    <h2>3 · <span class="seg-key">did:key</span> — the key as a self-describing binary blob</h2>
+    <p>
+        Same trust model as did:jwk — the key is the identifier — but the envelope is compact binary instead
+        of JSON. Two “self-describing” layers stack inside the part after <code>did:key:</code>:
+    </p>
+    <pre>did:key:<span class="seg-key">z</span><span class="seg-key">6Mke…</span>
+        │└── base58btc( <span class="seg-key">&lt;multicodec prefix&gt;</span> ‖ &lt;raw public key bytes&gt; )
+        └─── multibase tag: "z" means "the rest is base58btc"</pre>
+    <h3>multibase + multicodec = two type tags the bytes carry themselves</h3>
+    <table class="cmp">
+        <tr><th>layer</th><th>question it answers</th><th>did:key’s value</th></tr>
+        <tr><td>multibase</td><td>which <em>base</em> is the text in?</td><td><code>z</code> → base58btc</td></tr>
+        <tr><td>multicodec</td><td>which <em>key type</em> are the bytes?</td><td>e.g. <code>0xed 0x01</code> → Ed25519 public key</td></tr>
+    </table>
+    <p>
+        So resolving is: drop the <code>z</code>, base58btc-decode, read the first two bytes as the multicodec
+        (which curve), and the remaining bytes are the raw public key. The lab supports two codecs:
+    </p>
+    <pre><span class="seg-key">0xed 0x01</span>  ed25519-pub  → { kty:"OKP", crv:"Ed25519" }  — a signing key
+<span class="seg-key">0xec 0x01</span>  x25519-pub   → { kty:"OKP", crv:"X25519"  }  — a key-agreement key</pre>
+    <p>
+        And — just like did:jwk’s <code>use</code> — <em>the curve decides the relationships</em>. An Ed25519
+        key is for signing (authentication + assertionMethod + the two capability relationships); an X25519 key
+        is only for key agreement (keyAgreement). The verification-method <code>id</code> follows the did:key
+        convention that the fragment equals the whole <code>z…</code> string:
+        <code>did:key:z6Mke…<b>#</b>z6Mke…</code>.
+    </p>
+    <div class="callout">
+        The <code>multi-</code> family (multibase, multicodec, multihash, multiaddr) is borrowed from the
+        content-addressing / IPFS world. “Self-describing” means a reader never needs to be told out of band
+        how to interpret the bytes — the type tag travels with the value. You’ll meet multihash again wherever
+        a hash has to announce its own algorithm.
+    </div>
+    <div class="callout sec">
+        <strong>Out of scope:</strong> a real did:key resolver, given an Ed25519 key, also <em>derives</em> a
+        separate X25519 keyAgreement key by converting the Edwards point to Montgomery form. That curve math is
+        not in the lab — we stop at the key the identifier directly encodes.
+    </div>
+</section>
+
+<section class="panel" id="web">
+    <h2>4 · <span class="seg-web">did:web</span> — the document as a hosted resource</h2>
+    <p>
+        Here the axis tips over. The document is <em>not</em> in the identifier. The identifier names a domain;
+        the document is whatever <code>did.json</code> is hosted there right now. Resolving means turning the
+        DID into a URL and fetching it — and the lab implements the first half only (the fetch is Item 04):
+    </p>
+    <pre>did:web:<span class="seg-web">example.com</span>                 → https://<span class="seg-web">example.com</span>/.well-known/did.json
+did:web:<span class="seg-web">example.com:user:alice</span>      → https://<span class="seg-web">example.com</span>/user/alice/did.json
+did:web:<span class="seg-web">example.com%3A3000</span>:user:bob → https://<span class="seg-web">example.com:3000</span>/user/bob/did.json</pre>
+    <p>
+        The rules: <code>:</code> separates segments; the first segment is the authority; remaining segments
+        become path components and the URL ends in <code>did.json</code>; with no path it’s
+        <code>/.well-known/did.json</code>. A port colon is percent-encoded (<code>%3A</code>) so it isn’t
+        mistaken for a separator.
+    </p>
+    <div class="callout sec">
+        <strong>What you gave up, and what you bought.</strong> Unlike did:key/did:jwk, the document can be
+        <em>edited or replaced</em> by whoever controls the domain — your trust in it reduces to your trust in
+        that domain’s DNS and TLS. In exchange you get something the self-contained methods can never have:
+        the identifier stays fixed while the keys inside its document <em>rotate</em>. (More in §6.)
+    </div>
+</section>
+
+<section class="panel" id="ledger">
+    <h2>5 · <span class="seg-ledger">did:ion</span> / <span class="seg-ledger">did:ebsi</span> — the ledger end (concept only)</h2>
+    <p>
+        The far end of the axis. Instead of a single web server, the document — or its history of signed
+        update operations — is anchored on a ledger, so no one domain can quietly change it.
+    </p>
+    <ul>
+        <li><strong>did:ion</strong> — a Sidetree-based method anchoring batches of DID operations to Bitcoin,
+            with the bulk of the data in IPFS. No permission needed to create one; the chain orders the updates.</li>
+        <li><strong>did:ebsi</strong> — the EU Blockchain Services Infrastructure’s method, on a permissioned
+            ledger run by member states. Used in EU digital-identity pilots.</li>
+    </ul>
+    <p>
+        The point for this item is only their <em>place on the axis</em>: trust roots at a chain’s consensus
+        rather than a domain or pure math. There is no chain to read here, so the lab doesn’t implement them.
+    </p>
+</section>
+
+<section class="panel" id="compare">
+    <h2>6 · Side by side</h2>
+    <table class="cmp">
+        <tr>
+            <th></th>
+            <th><span class="tag t-jwk">did:jwk</span></th>
+            <th><span class="tag t-key">did:key</span></th>
+            <th><span class="tag t-web">did:web</span></th>
+            <th><span class="tag t-ledger">did:ion/ebsi</span></th>
+        </tr>
+        <tr><td>Where is the Document?</td><td>computed from the id</td><td>computed from the id</td><td>hosted at an HTTPS URL</td><td>anchored on a ledger</td></tr>
+        <tr><td>Root of trust</td><td>the math (decoding)</td><td>the math (decoding)</td><td>DNS + TLS + server operator</td><td>chain consensus</td></tr>
+        <tr><td>Network to resolve?</td><td>none</td><td>none</td><td>HTTPS GET</td><td>chain / Sidetree node</td></tr>
+        <tr><td>Can keys rotate?</td><td>no — id <em>is</em> the key</td><td>no — id <em>is</em> the key</td><td>yes — edit the document</td><td>yes — signed update ops</td></tr>
+        <tr><td>Envelope</td><td>base64url JSON</td><td>base58btc + multicodec</td><td>(none — it’s a URL)</td><td>method-specific</td></tr>
+        <tr><td>Good for</td><td>ephemeral / one-off keys</td><td>ephemeral / one-off keys</td><td>durable org / issuer identity</td><td>censorship-resistant durable id</td></tr>
+    </table>
+    <div class="callout">
+        The clean split is <strong>self-contained (jwk, key)</strong> vs <strong>hosted/anchored (web, ion)</strong>.
+        The first pair trades away key rotation for zero infrastructure and an unforgeable binding; the second
+        pair trades in a trust dependency to gain a stable identifier whose keys can change over time. That is
+        the whole decision.
+    </div>
+</section>
+
+<section class="panel" id="play">
+    <h2>7 · Resolver playground</h2>
+    <p class="muted">
+        Paste a DID. The page detects the method and runs the same decode your lab functions will: did:jwk →
+        decoded JWK, did:key → multicodec + raw key + curve, did:web → derived URL. Other methods report where
+        they sit on the axis.
+    </p>
+    <div class="demo">
+        <input type="text" id="didInput" spellcheck="false" autocomplete="off"
+               value="did:key:z6MkeTGwHmLmuCmgg4ABYhzWVh6ZX7hTwWt8gguAretUfc9c">
+        <div class="chips" id="examples"></div>
+        <div class="verdict" id="verdict"></div>
+        <pre id="out" style="display:none"></pre>
+    </div>
+</section>
+
+<script>
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const B58_MAP = {};
+for (let i = 0; i < B58.length; i++) B58_MAP[B58[i]] = i;
+
+function base58btcDecode(s) {
+    let acc = 0n;
+    for (const ch of s) {
+        const v = B58_MAP[ch];
+        if (v === undefined) throw new Error('illegal base58 char ' + JSON.stringify(ch));
+        acc = acc * 58n + BigInt(v);
+    }
+    const bytes = [];
+    while (acc > 0n) { bytes.unshift(Number(acc & 0xffn)); acc >>= 8n; }
+    let ones = 0;
+    for (const ch of s) { if (ch === '1') ones++; else break; }
+    return new Uint8Array([...new Array(ones).fill(0), ...bytes]);
+}
+
+const MULTICODEC = {
+    'ed01': {kty: 'OKP', crv: 'Ed25519', use: 'signing'},
+    'ec01': {kty: 'OKP', crv: 'X25519',  use: 'key agreement'},
+    'e701': {kty: 'EC',  crv: 'secp256k1', use: 'signing (not supported by the lab)'},
+    '8024': {kty: 'EC',  crv: 'P-256',    use: 'signing (not supported by the lab)'},
+};
+
+const hex = (u8, n) => Array.from(u8.slice(0, n)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+const b64url = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+function b64urlToStr(s) {
+    let b = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    return atob(b);
+}
+
+function analyze(did) {
+    if (did.startsWith('did:jwk:')) {
+        const jwk = JSON.parse(b64urlToStr(did.slice('did:jwk:'.length)));
+        const use = jwk.use === 'sig' ? 'auth + assertion + 2× capability (no keyAgreement)'
+                  : jwk.use === 'enc' ? 'keyAgreement only'
+                  : 'all five relationships';
+        return {method: 'jwk', cls: 'jwk',
+            summary: 'self-contained · the document is computed from this JSON key',
+            body: 'decoded JWK:\n' + JSON.stringify(jwk, null, 2) + '\n\nrelationships → ' + use};
+    }
+    if (did.startsWith('did:key:')) {
+        const msid = did.slice('did:key:'.length);
+        if (msid[0] !== 'z') throw new Error('did:key here must use the "z" (base58btc) multibase');
+        const bytes = base58btcDecode(msid.slice(1));
+        const codec = hex(bytes, 2).replace(/ /g, '');
+        const info = MULTICODEC[codec];
+        const raw = bytes.slice(2);
+        return {method: 'key', cls: 'key',
+            summary: 'self-contained · the document is computed from this binary key',
+            body: 'multibase     : z (base58btc)\n'
+                + 'multicodec    : 0x' + hex(bytes, 2).replace(/ /g, ' 0x') + (info ? '  → ' + info.crv + ' ' + info.kty + ' (' + info.use + ')' : '  → unknown codec')
+                + '\nraw key bytes : ' + raw.length + ' bytes\n'
+                + (info ? 'publicKeyJwk  : ' + JSON.stringify({kty: info.kty, crv: info.crv, x: b64url(raw)}) : '')};
+    }
+    if (did.startsWith('did:web:')) {
+        const msid = did.slice('did:web:'.length);
+        if (!msid) throw new Error('empty method-specific-id');
+        const segs = msid.split(':').map(decodeURIComponent);
+        const [authority, ...path] = segs;
+        const url = path.length === 0
+            ? 'https://' + authority + '/.well-known/did.json'
+            : 'https://' + authority + '/' + path.join('/') + '/did.json';
+        return {method: 'web', cls: 'web',
+            summary: 'hosted · trust reduces to this domain’s DNS + TLS',
+            body: 'derived document URL:\n' + url + '\n\n(the lab stops here; fetching is Item 04)'};
+    }
+    if (did.startsWith('did:ion:') || did.startsWith('did:ebsi:')) {
+        return {method: did.slice(4).split(':')[0], cls: 'ledger',
+            summary: 'ledger-anchored · trust roots at a chain’s consensus',
+            body: 'Not resolvable here — there is no chain to read. Conceptual only (see §5).'};
+    }
+    throw new Error('unrecognized DID method (this item covers jwk, key, web, ion, ebsi)');
+}
+
+const input = document.getElementById('didInput');
+const verdict = document.getElementById('verdict');
+const out = document.getElementById('out');
+
+function render() {
+    const did = input.value.trim();
+    try {
+        const r = analyze(did);
+        verdict.innerHTML = '<span class="badge tag t-' + r.cls + '">did:' + r.method + '</span> &nbsp;' + r.summary;
+        out.style.display = 'block';
+        out.textContent = r.body;
+    } catch (e) {
+        verdict.innerHTML = '<span class="badge" style="color:var(--danger)">✗ ' + e.message + '</span>';
+        out.style.display = 'none';
+    }
+}
+
+const EXAMPLES = [
+    'did:key:z6MkeTGwHmLmuCmgg4ABYhzWVh6ZX7hTwWt8gguAretUfc9c',
+    'did:key:z6LSiS5cXwUDnwhcbzi11fAW4iwKxZzrabTvkTMYLr3uB5Pg',
+    'did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6IlNJR3giLCJ5IjoiU0lHeSIsInVzZSI6InNpZyJ9',
+    'did:web:example.com',
+    'did:web:example.com%3A3000:user:alice',
+    'did:ion:EiClkZMDxPKqC9c-umQfTkR8',
+];
+const chips = document.getElementById('examples');
+for (const ex of EXAMPLES) {
+    const b = document.createElement('button');
+    b.textContent = ex.length > 46 ? ex.slice(0, 44) + '…' : ex;
+    b.title = ex;
+    b.onclick = () => { input.value = ex; render(); };
+    chips.appendChild(b);
+}
+
+input.addEventListener('input', render);
+render();
+</script>
+</div>
+</body>
+</html>

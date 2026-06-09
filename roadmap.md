@@ -17,8 +17,8 @@ Without these, every layer above looks like magic.
 The SSI (Self-Sovereign Identity) triangle — **Issuer ↔ Holder ↔ Verifier** — is the picture to internalize.
 
 - [x] **W3C VC Data Model 2.0** — what a verifiable credential *is* conceptually — [spec](https://www.w3.org/TR/vc-data-model-2.0/)
-- [ ] **W3C DID Core** — `did:method:identifier` syntax, DID Document structure *(in progress)* — [spec](https://www.w3.org/TR/did-core/)
-- [ ] **Major DID methods compared** — be able to explain at least four:
+- [x] **W3C DID Core** — `did:method:identifier` syntax, DID Document structure — [spec](https://www.w3.org/TR/did-core/)
+- [ ] **Major DID methods compared** — be able to explain at least four: *(in progress)*
   - `did:key` (self-contained, simplest)
   - `did:web` (domain-based, most practical)
   - `did:jwk` (JWK wrapped as a DID)
