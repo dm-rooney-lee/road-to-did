@@ -544,6 +544,11 @@
                 <div class="tagline">Private key — for private JWKs only</div>
                 <div class="body">Also base64url. <strong>If you see <code>d</code> in a public JWK, you've leaked a private key.</strong></div>
             </div>
+            <div class="concept-card">
+                <h4><code>use</code></h4>
+                <div class="tagline">Intended use — optional</div>
+                <div class="body">Declares the key's purpose (RFC 7517 §4.2): <code>"sig"</code> (signing/verifying) or <code>"enc"</code> (encryption/key-agreement). <strong>Optional and often absent.</strong> A finer-grained <code>key_ops</code> exists too, but <code>use</code> is the one you'll meet — e.g. <code>did:jwk</code> reads it to decide what the key is authorized for.</div>
+            </div>
         </div>
 
         <h3>JWK Set (JWKS)</h3>
