@@ -88,8 +88,50 @@ const JWS_2020_CTX = 'https://w3id.org/security/suites/jws-2020/v1';
 //   the absolute form drops straight into Item 02's dereferenceVerificationMethod.
 // ============================================================
 
-export function resolveDidJwk(did: string): DidDocument {
-    return TODO('resolveDidJwk');
+export function resolveDidJwk(bareDid: string): DidDocument {
+    const [scheme, method, msid] = bareDid.split(':');
+    if (scheme !== 'did' || method !== 'jwk') {
+        throw new Error(`scheme and method must be did and jwk: scheme=${scheme}, method=${method}`);
+    }
+
+    const jwk = JSON.parse(Buffer.from(msid, 'base64url').toString());
+    const did = `${bareDid}#0`;
+    const verificationMethod: VerificationMethod = {
+        id: did,
+        type: 'JsonWebKey2020',
+        controller: bareDid,
+        publicKeyJwk: jwk,
+    }
+
+    if (jwk.use === 'sig') {
+        return {
+            '@context': [DID_CTX_V1, JWS_2020_CTX],
+            id: bareDid,
+            verificationMethod: [verificationMethod],
+            authentication: [did],
+            assertionMethod: [did],
+            capabilityInvocation: [did],
+            capabilityDelegation: [did],
+        };
+    } else if (jwk.use === 'enc') {
+        return {
+            '@context': [DID_CTX_V1, JWS_2020_CTX],
+            id: bareDid,
+            verificationMethod: [verificationMethod],
+            keyAgreement: [did],
+        };
+    }
+
+    return {
+        '@context': [DID_CTX_V1, JWS_2020_CTX],
+        id: bareDid,
+        verificationMethod: [verificationMethod],
+        authentication: [did],
+        assertionMethod: [did],
+        capabilityInvocation: [did],
+        capabilityDelegation: [did],
+        keyAgreement: [did],
+    };
 }
 
 // ============================================================
