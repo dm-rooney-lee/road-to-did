@@ -183,12 +183,37 @@
     </p>
     <h3>The JWK’s <code>use</code> decides which relationships appear</h3>
     <p>
-        This is the one subtlety. A JWK may carry a <code>use</code> member, and it gates the verification
-        relationships — the authorization layer from Item 02’s Lesson 2:
+        This is the one subtlety. <code>use</code> is an <em>optional</em> JWK member (RFC 7517 §4.2 — see
+        Phase 0 Item 02’s JWK tab) that declares the key’s intended purpose. It has two values and is
+        frequently omitted: <code>"sig"</code> (a signing key), <code>"enc"</code> (an encryption /
+        key-agreement key), or absent. did:jwk reads it to gate the verification
+        <em>relationships</em> — the authorization layer from Item 02’s Lesson 2 — that the one key may
+        appear under:
     </p>
     <pre><span class="seg-jwk">use: "sig"</span>  → authentication, assertionMethod, capabilityInvocation, capabilityDelegation
 <span class="seg-jwk">use: "enc"</span>  → keyAgreement only
 <span class="seg-jwk">use absent </span> → all five</pre>
+
+    <h4>The five verification relationships, one line each</h4>
+    <p class="muted">
+        Defined by DID Core and introduced in Item 02 §5 — but the capability pair is spelled out here for
+        the first time. Each relationship answers “what is this key allowed to be used <em>for</em>?”
+    </p>
+    <table class="cmp">
+        <tr><th>relationship</th><th>key family</th><th>“this key may be used to…”</th></tr>
+        <tr><td>authentication</td><td>signing</td><td>prove you control the DID — log in / authenticate as the subject</td></tr>
+        <tr><td>assertionMethod</td><td>signing</td><td>sign <em>assertions</em> — i.e. issue Verifiable Credentials (Item 01’s issuer key)</td></tr>
+        <tr><td>capabilityInvocation</td><td>signing</td><td>invoke an authority you hold — e.g. authorize a privileged action, including updating the DID Document itself</td></tr>
+        <tr><td>capabilityDelegation</td><td>signing</td><td>delegate an authority to someone else (hand a capability down the chain)</td></tr>
+        <tr><td>keyAgreement</td><td>encryption</td><td>derive a shared secret for encryption (key exchange / ECDH) — <em>not</em> signing</td></tr>
+    </table>
+    <div class="callout">
+        The split lines up exactly with <code>use</code>: the four <em>signing</em> relationships ride with
+        <code>"sig"</code>, the lone <em>encryption</em> relationship (<code>keyAgreement</code>) with
+        <code>"enc"</code>, and an absent <code>use</code> can’t rule either out, so all five appear. The
+        capability pair comes from the object-capability (ZCAP) model — “a signed permission you can use, or
+        pass on”; you don’t implement that machinery here, only place the key under the right relationship.
+    </div>
     <div class="callout">
         Verbose but human-legible: one base64url decode and you can read the key type in plain words
         (<code>"kty":"EC"</code>). That readability is the trade <span class="seg-jwk">did:jwk</span> makes
