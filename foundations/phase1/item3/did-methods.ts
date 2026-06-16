@@ -89,49 +89,47 @@ const JWS_2020_CTX = 'https://w3id.org/security/suites/jws-2020/v1';
 //   the absolute form drops straight into Item 02's dereferenceVerificationMethod.
 // ============================================================
 
-export function resolveDidJwk(bareDid: string): DidDocument {
-    const [scheme, method, msid] = bareDid.split(':');
+export function resolveDidJwk(did: string): DidDocument {
+    const [scheme, method, msid] = did.split(':');
     if (scheme !== 'did' || method !== 'jwk') {
         throw new Error(`scheme and method must be did and jwk: scheme=${scheme}, method=${method}`);
     }
 
     const jwk = JSON.parse(Buffer.from(msid, 'base64url').toString());
-    const did = `${bareDid}#0`;
+    const didUrl = `${did}#0`;
     const verificationMethod: VerificationMethod = {
-        id: did,
+        id: didUrl,
         type: 'JsonWebKey2020',
-        controller: bareDid,
+        controller: did,
         publicKeyJwk: jwk,
-    }
+    };
 
+    const refs = [didUrl];
+    let rels;
     if (jwk.use === 'sig') {
-        return {
-            '@context': [DID_CTX_V1, JWS_2020_CTX],
-            id: bareDid,
-            verificationMethod: [verificationMethod],
-            authentication: [did],
-            assertionMethod: [did],
-            capabilityInvocation: [did],
-            capabilityDelegation: [did],
+        rels = {
+            authentication: refs,
+            assertionMethod: refs,
+            capabilityInvocation: refs,
+            capabilityDelegation: refs,
         };
     } else if (jwk.use === 'enc') {
-        return {
-            '@context': [DID_CTX_V1, JWS_2020_CTX],
-            id: bareDid,
-            verificationMethod: [verificationMethod],
-            keyAgreement: [did],
+        rels = {keyAgreement: refs};
+    } else {
+        rels = {
+            authentication: refs,
+            assertionMethod: refs,
+            capabilityInvocation: refs,
+            capabilityDelegation: refs,
+            keyAgreement: refs,
         };
     }
 
     return {
         '@context': [DID_CTX_V1, JWS_2020_CTX],
-        id: bareDid,
+        id: did,
         verificationMethod: [verificationMethod],
-        authentication: [did],
-        assertionMethod: [did],
-        capabilityInvocation: [did],
-        capabilityDelegation: [did],
-        keyAgreement: [did],
+        ...rels
     };
 }
 
@@ -184,8 +182,8 @@ export function resolveDidJwk(bareDid: string): DidDocument {
 //   stops at the key the identifier directly encodes.
 // ============================================================
 
-export function resolveDidKey(bareDid: string): DidDocument {
-    const [scheme, method, msid] = bareDid.split(':');
+export function resolveDidKey(did: string): DidDocument {
+    const [scheme, method, msid] = did.split(':');
     if (scheme !== 'did' || method !== 'key') {
         throw new Error(`scheme and method must be did and key: scheme=${scheme}, method=${method}`);
     }
@@ -209,31 +207,28 @@ export function resolveDidKey(bareDid: string): DidDocument {
     }
     const jwk = {kty: 'OKP', crv: crv, x: x};
 
-    const did = `${bareDid}#${msid}`;
+    const didUrl = `${did}#${msid}`;
     const verificationMethod: VerificationMethod = {
-        id: did,
+        id: didUrl,
         type: 'JsonWebKey2020',
-        controller: bareDid,
+        controller: did,
         publicKeyJwk: jwk,
     };
 
-    if (jwk.crv === 'Ed25519') {
-        return {
-            '@context': [DID_CTX_V1, JWS_2020_CTX],
-            id: bareDid,
-            verificationMethod: [verificationMethod],
-            authentication: [did],
-            assertionMethod: [did],
-            capabilityInvocation: [did],
-            capabilityDelegation: [did],
-        };
-    }
+    const refs = [didUrl];
+    const rels = crv === 'Ed25519' ? {
+            authentication: refs,
+            assertionMethod: refs,
+            capabilityInvocation: refs,
+            capabilityDelegation: refs,
+        }
+        : {keyAgreement: refs};
 
     return {
         '@context': [DID_CTX_V1, JWS_2020_CTX],
-        id: bareDid,
+        id: did,
         verificationMethod: [verificationMethod],
-        keyAgreement: [did],
+        ...rels,
     };
 }
 
@@ -271,7 +266,21 @@ export function resolveDidKey(bareDid: string): DidDocument {
 // ============================================================
 
 export function deriveDidWebUrl(did: string): string {
-    return TODO('deriveDidWebUrl');
+    const [scheme, method, ...msid] = did.split(':');
+    if (scheme !== 'did' || method !== 'web') {
+        throw new Error(`scheme and method must be did and web: scheme=${scheme}, method=${method}`);
+    }
+
+    if (msid.length === 0 || msid[0] === '') {
+        throw new Error(`msid is not specified`);
+    }
+
+    const [authority, ...paths] = msid.map(decodeURIComponent);
+    if (paths.length === 0) {
+        return `https://${authority}/.well-known/did.json`;
+    }
+
+    return `https://${authority}/${paths.join('/')}/did.json`;
 }
 
 // ============================================================
