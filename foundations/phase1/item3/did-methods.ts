@@ -35,6 +35,7 @@
  * they reuse its types and feed straight into its dereferenceVerificationMethod.
  */
 import type {DidDocument, VerificationMethod} from '../item2/did.ts';
+import {base58btcDecode, MULTICODEC_PREFIX} from "./multibase.cheatsheet.ts";
 
 // A base58btc decoder and the multicodec prefix table are provided in
 // ./multibase.cheatsheet.ts so Section 2 can focus on the did:key mapping
@@ -183,8 +184,57 @@ export function resolveDidJwk(bareDid: string): DidDocument {
 //   stops at the key the identifier directly encodes.
 // ============================================================
 
-export function resolveDidKey(did: string): DidDocument {
-    return TODO('resolveDidKey');
+export function resolveDidKey(bareDid: string): DidDocument {
+    const [scheme, method, msid] = bareDid.split(':');
+    if (scheme !== 'did' || method !== 'key') {
+        throw new Error(`scheme and method must be did and key: scheme=${scheme}, method=${method}`);
+    }
+
+    if (!msid.startsWith('z')) {
+        throw new Error(`key must start with specified z key`);
+    }
+
+    const decodedMsid = base58btcDecode(msid.substring(1));
+    const multiCodecPrefix = decodedMsid.subarray(0, 2);
+    const rawPublicKey = decodedMsid.subarray(2);
+    const x = rawPublicKey.toString('base64url');
+
+    let crv: string;
+    if (multiCodecPrefix.equals(MULTICODEC_PREFIX.ed25519Pub)) {
+        crv = 'Ed25519';
+    } else if (multiCodecPrefix.equals(MULTICODEC_PREFIX.x25519Pub)) {
+        crv = 'X25519';
+    } else {
+        throw new Error(`unsupported multicodec prefix: ${multiCodecPrefix}`);
+    }
+    const jwk = {kty: 'OKP', crv: crv, x: x};
+
+    const did = `${bareDid}#${msid}`;
+    const verificationMethod: VerificationMethod = {
+        id: did,
+        type: 'JsonWebKey2020',
+        controller: bareDid,
+        publicKeyJwk: jwk,
+    };
+
+    if (jwk.crv === 'Ed25519') {
+        return {
+            '@context': [DID_CTX_V1, JWS_2020_CTX],
+            id: bareDid,
+            verificationMethod: [verificationMethod],
+            authentication: [did],
+            assertionMethod: [did],
+            capabilityInvocation: [did],
+            capabilityDelegation: [did],
+        };
+    }
+
+    return {
+        '@context': [DID_CTX_V1, JWS_2020_CTX],
+        id: bareDid,
+        verificationMethod: [verificationMethod],
+        keyAgreement: [did],
+    };
 }
 
 // ============================================================
