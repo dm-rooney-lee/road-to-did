@@ -193,4 +193,20 @@ describe('Section 3 — deriveDidWebUrl', () => {
     test('3e — a non-did:web identifier is rejected', () => {
         assert.throws(() => deriveDidWebUrl('did:key:z6MkABC'));
     });
+
+    test('3f — percent-encoding inside a path segment is decoded, not just in the authority', () => {
+        // "%2B" is "+"; decoding must reach path segments, not only the authority
+        assert.equal(
+            deriveDidWebUrl('did:web:example.com:a%2Bb:alice'),
+            'https://example.com/a+b/alice/did.json',
+        );
+    });
+
+    test('3g — an empty method-specific-id is rejected', () => {
+        assert.throws(() => deriveDidWebUrl('did:web:'));
+    });
+
+    test('3h — a did:web with no method-specific-id at all is rejected', () => {
+        assert.throws(() => deriveDidWebUrl('did:web'));
+    });
 });
