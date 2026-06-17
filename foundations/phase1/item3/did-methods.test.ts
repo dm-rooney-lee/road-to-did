@@ -83,6 +83,16 @@ describe('Section 1 — resolveDidJwk', () => {
     test('1f — a non-did:jwk identifier is rejected', () => {
         assert.throws(() => resolveDidJwk('did:web:example.com'));
     });
+
+    test('1g — a payload that decodes to non-JSON is rejected', () => {
+        // base64url("hello") = "aGVsbG8" — valid base64url, but "hello" is not JSON
+        assert.throws(() => resolveDidJwk('did:jwk:aGVsbG8'), /not valid base64url-encoded JSON/);
+    });
+
+    test('1h — a did:jwk with no method-specific-id is rejected', () => {
+        assert.throws(() => resolveDidJwk('did:jwk'), /no method-specific-id/);
+        assert.throws(() => resolveDidJwk('did:jwk:'), /no method-specific-id/);
+    });
 });
 
 // ============================================================

@@ -95,7 +95,17 @@ export function resolveDidJwk(did: string): DidDocument {
         throw new Error(`scheme and method must be did and jwk: scheme=${scheme}, method=${method}`);
     }
 
-    const jwk = JSON.parse(Buffer.from(msid, 'base64url').toString());
+    if (!msid) {
+        throw new Error(`did:jwk has no method-specific-id: ${did}`);
+    }
+
+    let jwk;
+    try {
+        jwk = JSON.parse(Buffer.from(msid, 'base64url').toString());
+    } catch {
+        throw new Error(`did:jwk payload is not valid base64url-encoded JSON: ${did}`);
+    }
+
     const didUrl = `${did}#0`;
     const verificationMethod: VerificationMethod = {
         id: didUrl,
@@ -189,7 +199,7 @@ export function resolveDidKey(did: string): DidDocument {
     }
 
     if (!msid.startsWith('z')) {
-        throw new Error(`key must start with specified z key`);
+        throw new Error(`did:key identifier must use 'z' (base58btc) multibase`);
     }
 
     const decodedMsid = base58btcDecode(msid.substring(1));
@@ -203,7 +213,7 @@ export function resolveDidKey(did: string): DidDocument {
     } else if (multiCodecPrefix.equals(MULTICODEC_PREFIX.x25519Pub)) {
         crv = 'X25519';
     } else {
-        throw new Error(`unsupported multicodec prefix: ${multiCodecPrefix}`);
+        throw new Error(`unsupported multicodec prefix: ${multiCodecPrefix.toString('hex')}`);
     }
     const jwk = {kty: 'OKP', crv: crv, x: x};
 
